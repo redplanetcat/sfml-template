@@ -1,0 +1,5 @@
+build/
+debug/
+.vscode/
+imgui.ini
+/setup_env.sh
