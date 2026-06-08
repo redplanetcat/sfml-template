@@ -113,7 +113,7 @@ internal void
 LinuxUnloadGameCode(linux_game_code* GameCode) {
   if (GameCode->GameCodeSO) {
     if (dlclose(GameCode->GameCodeSO) != 0) {
-      fprintf(stderr, "%s\n", dlerror());
+      printf("%s\n", dlerror());
     }
     GameCode->GameCodeSO = 0;
   }
@@ -148,6 +148,7 @@ main(int _argc, char** _argv) {
     BinFilename[BinFilenameLength] = '\0';
   } else {
     perror("readlink");
+    return 1;
   }
   
   char* OnePastLastSlash = BinFilename;
