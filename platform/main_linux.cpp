@@ -64,7 +64,6 @@ LinuxCopyFile(char* src, char* dst) {
   }
 
   off_t bytes_to_copy = stat_buf.st_size;
-  loff_t total_copied = 0;
 
   while (bytes_to_copy > 0) {
     ssize_t ret = copy_file_range(input_fd, NULL, output_fd, NULL, (size_t)bytes_to_copy, 0);
@@ -76,7 +75,6 @@ LinuxCopyFile(char* src, char* dst) {
     if (ret == 0) break;
 
     bytes_to_copy -= ret;
-    total_copied += ret;
   }
 
   close(input_fd);
