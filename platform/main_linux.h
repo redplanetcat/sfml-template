@@ -2,6 +2,12 @@
 #include "../common/defines.h"
 #include "../common/types.h"
 #include "../game/game.h"
+#include <limits.h>
+
+struct linux_state {
+  char BinFilename[PATH_MAX]; 
+  char* BasePath;
+};
 
 struct linux_game_code {
   void* GameCodeSO;

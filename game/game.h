@@ -31,11 +31,9 @@ struct game_state {
 
 #define GAME_UPDATE(name) void name(game_memory* Memory, game_input* Input)
 typedef GAME_UPDATE(game_update_t);
-GAME_UPDATE(GameUpdateStub) { }
 
 #define GAME_RENDER(name) void name(game_memory* Memory)
 typedef GAME_RENDER(game_render_t);
-GAME_RENDER(GameRenderStub) { }
 
 
 #define GAME_H

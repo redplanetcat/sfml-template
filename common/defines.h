@@ -1,6 +1,7 @@
 #if !defined(DEFINES_H)
 
 #define internal static
+#define local_persist static
 #define global static
 
 #define Kilobytes(Value) ((Value) * 1024LL)

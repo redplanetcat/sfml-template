@@ -8,8 +8,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
-#include <limits.h>
 #include "main_linux.h"
+#include "fileops_linux.cpp"
+#include "../common/strings.cpp"
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
@@ -18,69 +19,6 @@
 sf::CircleShape triangle;
 sf::RenderWindow window;
 sf::Event event;
-
-inline i64
-LinuxGetLastWriteTime(char* Filename) {
-  struct stat FileStat = {};
-  i64 LastWriteTime = 0;
-  if (stat(Filename, &FileStat) == 0) {
-    LastWriteTime = FileStat.st_mtim.tv_nsec;
-  }
-  return LastWriteTime;
-}
-
-internal void
-CatStrings(size_t SourceACount, char* SourceA,
-           size_t SourceBCount, char* SourceB,
-           size_t DestCount, char* Dest) 
-{
-  for (size_t Index = 0; Index < SourceACount; ++Index) {
-    *Dest++ = *SourceA++;
-  }
-
-  for (size_t Index = 0; Index < SourceBCount; ++Index) {
-    *Dest++ = *SourceB++;
-  }
-
-  *Dest++ = 0;
-}
-
-internal int
-LinuxCopyFile(char* src, char* dst) {
-  int input_fd = open(src, O_RDONLY);
-  if (input_fd < 0) return -1;
-
-  int output_fd = open(dst, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  if (output_fd < 0) {
-    close(input_fd);
-    return -1;
-  }
-
-  struct stat stat_buf;
-  if (fstat(input_fd, &stat_buf) < 0) {
-    close(input_fd);
-    close(output_fd);
-    return -1;
-  }
-
-  off_t bytes_to_copy = stat_buf.st_size;
-
-  while (bytes_to_copy > 0) {
-    ssize_t ret = copy_file_range(input_fd, NULL, output_fd, NULL, (size_t)bytes_to_copy, 0);
-    if (ret < 0) {
-      close(input_fd);
-      close(output_fd);
-      return -1;
-    }
-    if (ret == 0) break;
-
-    bytes_to_copy -= ret;
-  }
-
-  close(input_fd);
-  close(output_fd);
-  return 0;
-}
 
 internal linux_game_code
 LinuxLoadGameCode(char* SourceSOName, char* TempSOName) {
@@ -102,8 +40,8 @@ LinuxLoadGameCode(char* SourceSOName, char* TempSOName) {
 
   if (!Result.IsValid) {
     printf("Failed to load game dynamic library.\n");
-    Result.GameUpdate = GameUpdateStub;
-    Result.GameRender = GameRenderStub;
+    Result.GameUpdate = 0;
+    Result.GameRender = 0;
   }
 
   return (Result);
@@ -118,8 +56,36 @@ LinuxUnloadGameCode(linux_game_code* GameCode) {
     GameCode->GameCodeSO = 0;
   }
   GameCode->IsValid = false;
-  GameCode->GameUpdate = GameUpdateStub;
-  GameCode->GameRender = GameRenderStub;
+  GameCode->GameUpdate = 0;
+  GameCode->GameRender = 0;
+}
+
+internal void
+LinuxGetExecutableFilename(linux_state* State) {
+  ssize_t BinFilenameLength = readlink("/proc/self/exe", State->BinFilename, sizeof(State->BinFilename) - 1);
+  if (BinFilenameLength != -1) {
+    State->BinFilename[BinFilenameLength] = '\0';
+  } else {
+    perror("readlink");
+    return;
+  }
+  
+  State->BasePath = State->BinFilename;
+  for (char* Scan = State->BinFilename; *Scan; ++Scan) {
+    if (*Scan == '/') {
+      State->BasePath = Scan + 1;
+    }
+  }
+}
+
+internal void
+LinuxBuildExecutablePathFilename(linux_state* State, const char* Filename,
+                                 size_t DestCount, char* Dest)
+{
+  CatStrings((size_t)(State->BasePath - State->BinFilename), 
+             State->BinFilename,
+             StringLength(Filename), Filename,
+             DestCount, Dest);
 }
 
 PLATFORM_HANDLE_INPUT(PlatformHandleInput) {
@@ -142,36 +108,16 @@ PLATFORM_RENDER_TRIANGLE(PlatformRenderTriangle) {
 
 int
 main(int _argc, char** _argv) {
-  char BinFilename[PATH_MAX];
-  ssize_t BinFilenameLength = readlink("/proc/self/exe", BinFilename, sizeof(BinFilename) - 1);
-  if (BinFilenameLength != -1) {
-    BinFilename[BinFilenameLength] = '\0';
-  } else {
-    perror("readlink");
-    return 1;
-  }
-  
-  char* OnePastLastSlash = BinFilename;
-  for (char* Scan = BinFilename; *Scan; ++Scan) {
-    if (*Scan == '/') {
-      OnePastLastSlash = Scan + 1;
-    }
-  }
+  linux_state LinuxState = {};
+  LinuxGetExecutableFilename(&LinuxState);
 
-  char SourceGameCodeSOFilename[] = "libgame.so";
   char SourceGameCodeSOFullPath[PATH_MAX];
-
-  CatStrings((size_t)(OnePastLastSlash - BinFilename), BinFilename,
-             sizeof(SourceGameCodeSOFilename) - 1, SourceGameCodeSOFilename,
-             sizeof(SourceGameCodeSOFullPath), SourceGameCodeSOFullPath);
-  
-  char TempGameCodeSOFilename[] = "libgame_temp.so";
+  LinuxBuildExecutablePathFilename(&LinuxState, "libgame.so",
+                                   sizeof(SourceGameCodeSOFullPath), SourceGameCodeSOFullPath);
   char TempGameCodeSOFullPath[PATH_MAX];
-
-  CatStrings((size_t)(OnePastLastSlash - BinFilename), BinFilename,
-             sizeof(TempGameCodeSOFilename) - 1, TempGameCodeSOFilename,
-             sizeof(TempGameCodeSOFullPath), TempGameCodeSOFullPath);
-
+  LinuxBuildExecutablePathFilename(&LinuxState, "libgame_temp.so",
+                                   sizeof(TempGameCodeSOFullPath), TempGameCodeSOFullPath);
+  
   linux_game_code Game = LinuxLoadGameCode(SourceGameCodeSOFullPath, 
                                            TempGameCodeSOFullPath);
 
@@ -221,13 +167,29 @@ main(int _argc, char** _argv) {
       Game = LinuxLoadGameCode(SourceGameCodeSOFullPath,
                                TempGameCodeSOFullPath);
     }
-    Game.GameUpdate(&GameMemory, &GameInput);
+    if (Game.GameUpdate) {
+      Game.GameUpdate(&GameMemory, &GameInput);
+    }
     //PlatformHandleInput();
     window.clear();
-    Game.GameRender(&GameMemory);
+    if (Game.GameRender) {
+      Game.GameRender(&GameMemory);
+    }
     //PlatformRenderTriangle();
     window.display();
   }
   return 0;
 }
+
+#ifdef ARM_BUILD
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+  void __stack_chk_fail(void) { abort(); }
+  void __stack_chk_fail_local(void) { __stack_chk_fail(); }
+  uintptr_t __stack_chk_guard = 0;
+#ifdef __cplusplus
+}
+#endif // __cplusplus
+#endif // ARM_BUILD
 
