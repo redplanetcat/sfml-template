@@ -1,5 +1,7 @@
 #include <SFML/Graphics.hpp>
 #include <cmath>
+#include <cstring>
+#include <array>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <dlfcn.h>
@@ -17,8 +19,10 @@
 
 
 sf::CircleShape triangle;
-sf::RenderWindow window;
-sf::Event event;
+sf::RenderWindow PlatformWindow;
+sf::Event PlatformEvent;
+std::array<sf::Vertex, MAX_VERTICES> PlatformVertices;
+u64 PlatformNumVertices;
 
 internal linux_game_code
 LinuxLoadGameCode(char* SourceSOName, char* TempSOName) {
@@ -89,11 +93,11 @@ LinuxBuildExecutablePathFilename(linux_state* State, const char* Filename,
 }
 
 PLATFORM_HANDLE_INPUT(PlatformHandleInput) {
-  while (window.pollEvent(event)) {
-    if (event.type == sf::Event::Closed) {
-      window.close();
-    } else if (event.type == sf::Event::MouseMoved) {
-      auto mouse_position = window.mapPixelToCoords({ event.mouseMove.x, event.mouseMove.y });
+  while (PlatformWindow.pollEvent(PlatformEvent)) {
+    if (PlatformEvent.type == sf::Event::Closed) {
+      PlatformWindow.close();
+    } else if (PlatformEvent.type == sf::Event::MouseMoved) {
+      auto mouse_position = PlatformWindow.mapPixelToCoords({ PlatformEvent.mouseMove.x, PlatformEvent.mouseMove.y });
       auto delta_position = mouse_position - triangle.getPosition();
       float rotation = RAD2DEG((float)std::atan2(delta_position.y, delta_position.x)) + 90.f;
 
@@ -103,7 +107,73 @@ PLATFORM_HANDLE_INPUT(PlatformHandleInput) {
 }
 
 PLATFORM_RENDER_TRIANGLE(PlatformRenderTriangle) {
-  window.draw(triangle);
+  PlatformWindow.draw(triangle);
+}
+
+PLATFORM_PUSH_VERTICES(PlatformPushVertices) {
+  u64 NumVerticesToCopy = MIN(MAX_VERTICES-PlatformNumVertices, NumVertices);
+  size_t BytesToCopy = (size_t)(NumVerticesToCopy * sizeof(Vertices[0]));
+  sf::Vertex* PlatformVerticesPtr = &PlatformVertices[PlatformNumVertices];
+  memcpy((void*)PlatformVerticesPtr, (const void*)Vertices, BytesToCopy);
+  PlatformNumVertices += NumVerticesToCopy;
+}
+
+PLATFORM_DRAW_VERTICES(PlatformDrawVertices) {
+  sf::PrimitiveType PlatformPrimitiveType;
+  switch (PrimitiveType) {
+    case primitive_type::Points: {
+      PlatformPrimitiveType = sf::PrimitiveType::Points;
+    }; break;
+    case primitive_type::Lines: {
+      PlatformPrimitiveType = sf::PrimitiveType::Lines;
+    }; break;
+    case primitive_type::Triangles:
+    default: {
+      PlatformPrimitiveType = sf::PrimitiveType::Triangles;
+    };
+  }
+  PlatformWindow.draw(PlatformVertices.data(), PlatformNumVertices, PlatformPrimitiveType);
+  PlatformNumVertices = 0;
+}
+
+int
+AllocateContiguousMemoryBuffer(void** Ptr, size_t Size) {
+  *Ptr = mmap(NULL, Size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+  if (*Ptr == MAP_FAILED) {
+    printf("Failed to reserve memory of %lu bytes.\n", Size);
+    return 1;
+  } else {
+    int result = mprotect(*Ptr, Size, PROT_READ | PROT_WRITE);
+    if (result == -1) {
+      printf("Failed to commit memory of %lu bytes.\n", Size);
+      return 1;
+    }
+  }
+  return 0;
+}
+
+int
+AllocatePlatformMemory(game_memory* Memory) {
+  Memory->PermanentStorageSize = Megabytes(16);
+  Memory->ScratchStorageSize = Megabytes(16);
+
+  if (AllocateContiguousMemoryBuffer(&Memory->PermanentStorage, Memory->PermanentStorageSize) != 0) {
+    printf("Failed to allocate permanent storage.");
+    return 1;
+  }
+  if (AllocateContiguousMemoryBuffer(&Memory->ScratchStorage, Memory->ScratchStorageSize) != 0) {
+    printf("Failed to allocate scratch storage.");
+    return 1;
+  }
+  return 0;
+}
+
+void
+AssignPlatformCallbacks(game_memory* Memory) {
+  Memory->PlatformCallbacks.PlatformHandleInput = PlatformHandleInput;
+  Memory->PlatformCallbacks.PlatformRenderTriangle = PlatformRenderTriangle;
+  Memory->PlatformCallbacks.PlatformPushVertices = PlatformPushVertices;
+  Memory->PlatformCallbacks.PlatformDrawVertices = PlatformDrawVertices;
 }
 
 int
@@ -122,44 +192,23 @@ main(int _argc, char** _argv) {
                                            TempGameCodeSOFullPath);
 
   game_memory GameMemory = {};
-  GameMemory.PermanentStorageSize = Megabytes(16);
-  GameMemory.ScratchStorageSize = Megabytes(16);
-  GameMemory.PermanentStorage = mmap(NULL, GameMemory.PermanentStorageSize, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-  if (GameMemory.PermanentStorage == MAP_FAILED) {
-    printf("Failed to reserve permanent memory of %lu bytes.\n", GameMemory.PermanentStorageSize);
+  if (AllocatePlatformMemory(&GameMemory) != 0) {
+    printf("Failed to allocate memory on a host platform.");
     return 1;
-  } else {
-    int result = mprotect(GameMemory.PermanentStorage, GameMemory.PermanentStorageSize, PROT_READ | PROT_WRITE);
-    if (result == -1) {
-      printf("Failed to commit permanent memory of %lu bytes.\n", GameMemory.PermanentStorageSize);
-      return 1;
-    }
   }
-  GameMemory.ScratchStorage = mmap(NULL, GameMemory.ScratchStorageSize, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-  if (GameMemory.ScratchStorage == MAP_FAILED) {
-    printf("Failed to reserve scratch memory of %lu bytes.\n", GameMemory.ScratchStorageSize);
-    return 1;
-  } else {
-    int result = mprotect(GameMemory.ScratchStorage, GameMemory.ScratchStorageSize, PROT_READ | PROT_WRITE);
-    if (result == -1) {
-      printf("Failed to commit scratch memory of %lu bytes.\n", GameMemory.ScratchStorageSize);
-      return 1;
-    }
-  }
-  GameMemory.PlatformHandleInput = PlatformHandleInput;
-  GameMemory.PlatformRenderTriangle = PlatformRenderTriangle;
+  AssignPlatformCallbacks(&GameMemory);
 
   game_input GameInput = { };
 
-  window.create(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "SFML Template");
-  window.setFramerateLimit(60);
+  PlatformWindow.create(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "SFML Template");
+  PlatformWindow.setFramerateLimit(60);
 
   triangle = sf::CircleShape{ 50.f, 3u };
   triangle.setFillColor({ 100u, 50u, 200u });
   triangle.setOrigin({ std::round(triangle.getLocalBounds().width / 2.f), std::round(triangle.getLocalBounds().height / 2.f) });
   triangle.setPosition({ WINDOW_WIDTH / 2.f, WINDOW_HEIGHT / 2.f });
 
-  while (window.isOpen()) {
+  while (PlatformWindow.isOpen()) {
     i64 NewSOWriteTime = LinuxGetLastWriteTime(SourceGameCodeSOFullPath);
     if (NewSOWriteTime != Game.SOLastWriteTime) {
       Game.SOLastWriteTime = NewSOWriteTime;
@@ -171,12 +220,12 @@ main(int _argc, char** _argv) {
       Game.GameUpdate(&GameMemory, &GameInput);
     }
     //PlatformHandleInput();
-    window.clear();
+    PlatformWindow.clear();
     if (Game.GameRender) {
       Game.GameRender(&GameMemory);
     }
     //PlatformRenderTriangle();
-    window.display();
+    PlatformWindow.display();
   }
   return 0;
 }

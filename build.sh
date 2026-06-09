@@ -31,9 +31,11 @@ fi
 
 if [[ ! -f debug/${GAME_OUT_NAME} || $(find ${GAME_SRC_DIR} ${COMMON_SRC_DIR} -type f -newer debug/${GAME_OUT_NAME} -print -quit | wc -l) -gt 0 ]]; then
   ${COMPILER} -c -fPIC ${FLAGS} ${WARNING_FLAGS} "${GAME_SRC_DIR}/game.cpp" -o "debug/game.o"
-  ${COMPILER} -shared -o "debug/${GAME_OUT_NAME}" "debug/game.o"
   if [ $? -eq 0 ]; then
-    echo "Game Build successful! Library is at: debug/${GAME_OUT_NAME}"
+    ${COMPILER} -shared -o "debug/${GAME_OUT_NAME}" "debug/game.o"
+    if [ $? -eq 0 ]; then
+      echo "Game Build successful! Library is at: debug/${GAME_OUT_NAME}"
+    fi
   else
     echo "Game Build failed. Check errors above."
   fi
