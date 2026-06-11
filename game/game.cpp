@@ -1,23 +1,39 @@
 #include "game.h"
+#include <cstddef>
+#include <cstring>
+#include <cstdio>
 
-internal u64
-CreateEntity() {
+vertex Vertices[MAX_VERTICES] = {};
+u32 NumVertices = 0;
 
-}
-
-internal u64
-DeleteEntity(u64 ID) {
-
+internal void
+PushVertices(vertex* VerticesToPush, u32 NumVerticesToPush) {
+  u32 NumVerticesToCopy = MIN(MAX_VERTICES-NumVertices, NumVerticesToPush);
+  size_t BytesToCopy = (size_t)(NumVerticesToCopy * sizeof(Vertices[0]));
+  vertex* VerticesPtr = &Vertices[NumVertices];
+  memcpy((void*)VerticesPtr, (const void*)VerticesToPush, BytesToCopy);
+  NumVertices += NumVerticesToCopy;
+  printf("Pushed %u vertices: %lu bytes\n", NumVerticesToCopy, BytesToCopy);
 }
 
 internal void
 GameReset(game_state* GameState) {
-  game_state->Entities = entity_manager();
+  GameState->Entities = entity_manager();
+
+  vertex QuadVertices[6] = {
+    {{ 0.f, 0.f }, { 0, 0, 255, 255 }, { -1.f, 0.f }},
+    {{ 255.f, 0.f }, { 0, 255, 0, 255 }, { -1.f, 0.f }},
+    {{ 255.f, 255.f }, { 255, 0, 0, 255 }, { -1.f, 0.f }},
+    {{ 0.f, 0.f }, { 0, 0, 255, 255 }, { -1.f, 0.f }},
+    {{ 0.f, 255.f }, { 255, 0, 255, 255 }, { -1.f, 0.f }},
+    {{ 255.f, 255.f }, { 255, 0, 0, 255 }, { -1.f, 0.f }},
+  };
+  PushVertices(QuadVertices, 6);
 }
 
 internal void 
 GameInit(game_state* GameState, platform_callbacks* Callbacks) {
-  game_state->Entities = entity_manager();
+  GameReset(GameState);
 }
 
 #if defined __cplusplus
@@ -26,19 +42,11 @@ extern "C"
 GAME_UPDATE(GameUpdate) {
   game_state* GameState = (game_state*)Memory->PermanentStorage;
   if (!GameState->IsInitialized) {
+    printf("GameState is uninitialized, calling init function.\n");
     GameInit(GameState, &Memory->PlatformCallbacks);
     GameState->IsInitialized = true;
   }
   Memory->PlatformCallbacks.PlatformHandleInput();
-  vertex Vertices[6] = {
-    {{ 0.f, 0.f }, { 0, 0, 255, 255 }, { -1.f, 0.f }},
-    {{ 255.f, 0.f }, { 0, 255, 0, 255 }, { -1.f, 0.f }},
-    {{ 255.f, 255.f }, { 255, 0, 0, 255 }, { -1.f, 0.f }},
-    {{ 0.f, 0.f }, { 0, 0, 255, 255 }, { -1.f, 0.f }},
-    {{ 0.f, 255.f }, { 255, 0, 255, 255 }, { -1.f, 0.f }},
-    {{ 255.f, 255.f }, { 255, 0, 0, 255 }, { -1.f, 0.f }},
-  };
-  Memory->PlatformCallbacks.PlatformPushVertices(Vertices, 6);
 }
 
 #if defined __cplusplus
@@ -51,5 +59,5 @@ GAME_RENDER(GameRender) {
   }
   game_state* GameState = (game_state*)Memory->PermanentStorage;
   Memory->PlatformCallbacks.PlatformRenderTriangle();
-  Memory->PlatformCallbacks.PlatformDrawVertices(PRIMITIVE_TRIANGLES);
+  Memory->PlatformCallbacks.PlatformDrawVertices(Vertices, NumVertices, primitive_type::Triangles);
 }

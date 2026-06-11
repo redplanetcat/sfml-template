@@ -11,18 +11,10 @@
 #include <unistd.h>
 #include <time.h>
 #include "main_linux.h"
-#include "fileops_linux.cpp"
 #include "../common/strings.cpp"
-
-#define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 600
-
-
-sf::CircleShape triangle;
-sf::RenderWindow PlatformWindow;
-sf::Event PlatformEvent;
-std::array<sf::Vertex, MAX_VERTICES> PlatformVertices;
-u64 PlatformNumVertices;
+#include "fileops_linux.cpp"
+#include "memory_linux.cpp"
+#include "platform_common.cpp"
 
 internal linux_game_code
 LinuxLoadGameCode(char* SourceSOName, char* TempSOName) {
@@ -92,92 +84,8 @@ LinuxBuildExecutablePathFilename(linux_state* State, const char* Filename,
              DestCount, Dest);
 }
 
-PLATFORM_HANDLE_INPUT(PlatformHandleInput) {
-  while (PlatformWindow.pollEvent(PlatformEvent)) {
-    if (PlatformEvent.type == sf::Event::Closed) {
-      PlatformWindow.close();
-    } else if (PlatformEvent.type == sf::Event::MouseMoved) {
-      auto mouse_position = PlatformWindow.mapPixelToCoords({ PlatformEvent.mouseMove.x, PlatformEvent.mouseMove.y });
-      auto delta_position = mouse_position - triangle.getPosition();
-      float rotation = RAD2DEG((float)std::atan2(delta_position.y, delta_position.x)) + 90.f;
-
-      triangle.setRotation(rotation);
-    }
-  }
-}
-
-PLATFORM_RENDER_TRIANGLE(PlatformRenderTriangle) {
-  PlatformWindow.draw(triangle);
-}
-
-PLATFORM_PUSH_VERTICES(PlatformPushVertices) {
-  u64 NumVerticesToCopy = MIN(MAX_VERTICES-PlatformNumVertices, NumVertices);
-  size_t BytesToCopy = (size_t)(NumVerticesToCopy * sizeof(Vertices[0]));
-  sf::Vertex* PlatformVerticesPtr = &PlatformVertices[PlatformNumVertices];
-  memcpy((void*)PlatformVerticesPtr, (const void*)Vertices, BytesToCopy);
-  PlatformNumVertices += NumVerticesToCopy;
-}
-
-PLATFORM_DRAW_VERTICES(PlatformDrawVertices) {
-  sf::PrimitiveType PlatformPrimitiveType;
-  switch (PrimitiveType) {
-    case primitive_type::Points: {
-      PlatformPrimitiveType = sf::PrimitiveType::Points;
-    }; break;
-    case primitive_type::Lines: {
-      PlatformPrimitiveType = sf::PrimitiveType::Lines;
-    }; break;
-    case primitive_type::Triangles:
-    default: {
-      PlatformPrimitiveType = sf::PrimitiveType::Triangles;
-    };
-  }
-  PlatformWindow.draw(PlatformVertices.data(), PlatformNumVertices, PlatformPrimitiveType);
-  PlatformNumVertices = 0;
-}
-
 int
-AllocateContiguousMemoryBuffer(void** Ptr, size_t Size) {
-  *Ptr = mmap(NULL, Size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-  if (*Ptr == MAP_FAILED) {
-    printf("Failed to reserve memory of %lu bytes.\n", Size);
-    return 1;
-  } else {
-    int result = mprotect(*Ptr, Size, PROT_READ | PROT_WRITE);
-    if (result == -1) {
-      printf("Failed to commit memory of %lu bytes.\n", Size);
-      return 1;
-    }
-  }
-  return 0;
-}
-
-int
-AllocatePlatformMemory(game_memory* Memory) {
-  Memory->PermanentStorageSize = Megabytes(16);
-  Memory->ScratchStorageSize = Megabytes(16);
-
-  if (AllocateContiguousMemoryBuffer(&Memory->PermanentStorage, Memory->PermanentStorageSize) != 0) {
-    printf("Failed to allocate permanent storage.");
-    return 1;
-  }
-  if (AllocateContiguousMemoryBuffer(&Memory->ScratchStorage, Memory->ScratchStorageSize) != 0) {
-    printf("Failed to allocate scratch storage.");
-    return 1;
-  }
-  return 0;
-}
-
-void
-AssignPlatformCallbacks(game_memory* Memory) {
-  Memory->PlatformCallbacks.PlatformHandleInput = PlatformHandleInput;
-  Memory->PlatformCallbacks.PlatformRenderTriangle = PlatformRenderTriangle;
-  Memory->PlatformCallbacks.PlatformPushVertices = PlatformPushVertices;
-  Memory->PlatformCallbacks.PlatformDrawVertices = PlatformDrawVertices;
-}
-
-int
-main(int _argc, char** _argv) {
+main(int argc, char** argv) {
   linux_state LinuxState = {};
   LinuxGetExecutableFilename(&LinuxState);
 

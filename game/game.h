@@ -3,6 +3,9 @@
 #include "../common/defines.h"
 #include "../common/types.h"
 
+#define WINDOW_WIDTH 800
+#define WINDOW_HEIGHT 600
+
 #define MAX_VERTICES 16384
 #define MAX_ENTITIES 2048
 
@@ -33,7 +36,7 @@ struct vertex {
   vec2 TexCoord;
 };
 
-enum class game_primitive_type {
+enum class primitive_type {
   Points,
   Lines,
   Triangles
@@ -45,16 +48,13 @@ typedef PLATFORM_RENDER_TRIANGLE(platform_render_triangle_t);
 #define PLATFORM_HANDLE_INPUT(name) void name()
 typedef PLATFORM_HANDLE_INPUT(platform_handle_input_t);
 
-#define PLATFORM_PUSH_VERTICES(name) void name(vertex* Vertices, u64 NumVertices)
-typedef PLATFORM_PUSH_VERTICES(platform_push_vertices_t);
-
-#define PLATFORM_DRAW_VERTICES(name) void name(game_primitive_type PrimitiveType)
+#define PLATFORM_DRAW_VERTICES(name) void name(vertex* Vertices, u32 NumVertices, \
+                                               primitive_type PrimitiveType)
 typedef PLATFORM_DRAW_VERTICES(platform_draw_vertices_t);
 
 struct platform_callbacks {
   platform_render_triangle_t* PlatformRenderTriangle;
   platform_handle_input_t* PlatformHandleInput;
-  platform_push_vertices_t* PlatformPushVertices;
   platform_draw_vertices_t* PlatformDrawVertices;
 };
 
@@ -82,19 +82,11 @@ struct entity_ref {
   u32 Idx;
   u32 Gen;
 
-  entity_ref nil() {
+  internal entity_ref Nil() {
     return { 0, 0 };
   }
-
-  void operator++() {
-    
-  }
 };
 
-struct entity_iter {
-  entity* Entities;
-  entity_ref Ref;
-};
 
 struct entity {
   entity_ref Parent;
@@ -111,10 +103,11 @@ struct entity {
   u32 Flags;
 
   operator bool() const {
-    return Kind != kind::Nil;
+    return Kind != entity_kind::Nil;
   }
 
 };
+
 
 struct entity_manager {
   entity Entities[MAX_ENTITIES];
@@ -122,6 +115,7 @@ struct entity_manager {
   u32 Gen[MAX_ENTITIES];
   u32 FirstFree;
   u32 NextFree[MAX_ENTITIES];
+  u32 EntitiesCount;
   
   entity_ref 
   Add(entity_kind Kind) {
@@ -132,6 +126,7 @@ struct entity_manager {
       Entities[Slot].Kind = Kind;
       UsedEntities[Slot] = true;
       Gen[Slot] += 1;
+      EntitiesCount += 1;
       return { Slot, Gen[Slot] };
     } else {
       return entity_ref::Nil();
@@ -146,6 +141,7 @@ struct entity_manager {
         NextFree[Slot] = FirstFree;
       }
       FirstFree = Slot;
+      EntitiesCount -= 1;
     }
   }
 
@@ -154,14 +150,9 @@ struct entity_manager {
     return Entities[deref(Ref)];
   }
 
-  entity_iter 
-  Begin() {
-    return { this, 1 };
-  }
-
-  entity_iter 
-  End() {
-    return { this, MAX_ENTITIES };
+  u32
+  Count() {
+    return EntitiesCount;
   }
 
 private:
