@@ -12,8 +12,8 @@ struct linux_state {
 struct linux_game_code {
   void* GameCodeSO;
   i64 SOLastWriteTime;
-  game_update_t* GameUpdate;
-  game_render_t* GameRender;
+  game_update_t* Update;
+  game_render_t* Render;
   b32 IsValid;
 };
 

@@ -45,3 +45,31 @@ LinuxCopyFile(const char* Src, const char* Dst) {
   return 0;
 }
 
+internal void
+LinuxGetExecutableFilename(linux_state* State) {
+  ssize_t BinFilenameLength = readlink("/proc/self/exe", State->BinFilename, sizeof(State->BinFilename) - 1);
+  if (BinFilenameLength != -1) {
+    State->BinFilename[BinFilenameLength] = '\0';
+  } else {
+    perror("readlink");
+    return;
+  }
+  
+  State->BasePath = State->BinFilename;
+  for (char* Scan = State->BinFilename; *Scan; ++Scan) {
+    if (*Scan == '/') {
+      State->BasePath = Scan + 1;
+    }
+  }
+}
+
+internal void
+LinuxBuildExecutablePathFilename(linux_state* State, const char* Filename,
+                                 size_t DestCount, char* Dest)
+{
+  CatStrings((size_t)(State->BasePath - State->BinFilename), 
+             State->BinFilename,
+             StringLength(Filename), Filename,
+             DestCount, Dest);
+}
+

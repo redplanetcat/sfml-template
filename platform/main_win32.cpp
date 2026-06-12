@@ -46,27 +46,6 @@ Win32UnloadGameCode(win32_game_code* GameCode) {
     GameCode->Render = 0;
 }
 
-internal void
-Win32GetExecutableFilename(win32_state* State) {
-    DWORD SizeOfFilename = GetModuleFilename(0, State->ExeFilename, sizeof(State->ExeFilename));
-    State->BasePath = State->ExeFilename;
-    for (char* Scan = State->ExeFilename; *Scan; ++Scan) {
-        if (*Scan == '\\') {
-            State->BasePath = Scan + 1;
-        }
-    }
-}
-
-internal void
-Win32BuildExecutablePathFilename(win32_state* State, const char* Filename,
-                                 size_t DestCount, char* Dest)
-{
-    CatStrings((size_t)(State->BasePath - State->ExeFilename),
-               State->ExeFilename,
-               StringLength(Filename), Filename,
-               DestCount, Dest);
-}
-
 int main(int argc, char** argv) {
     win32_state Win32State = {};
     Win32GetExecutableFilename(&Win32State);
@@ -88,15 +67,16 @@ int main(int argc, char** argv) {
     }
     AssignPlatformCallacks(&GameMemory);
 
+    game_input GameInput = game_input();
+
   PlatformWindow.create(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "SFML Template");
   PlatformWindow.setFramerateLimit(60);
 
-  triangle = sf::CircleShape{ 50.f, 3u };
-  triangle.setFillColor({ 100u, 50u, 200u });
-  triangle.setOrigin({ std::round(triangle.getLocalBounds().width / 2.f), std::round(triangle.getLocalBounds().height / 2.f) });
-  triangle.setPosition({ WINDOW_WIDTH / 2.f, WINDOW_HEIGHT / 2.f });
+  sf::Clock DeltaClock;
 
   while (PlatformWindow.isOpen()) {
+    sf::Time DeltaTime = DeltaClock.restart();
+
     FILETIME NewDLLWriteTime = Win32GetLastWrieTime(SourceGameCodeDLLFullPath);
     if (CompareFileTime(&NewDLLWriteTime, Game.DLLLastWriteTime)) {
       Game.DLLLastWriteTime = NewDLLWriteTime;
@@ -104,15 +84,16 @@ int main(int argc, char** argv) {
       Game = Win32LoadGameCode(SourceGameCodeDLLFullPath,
                                TempGameCodeDLLFullPath);
     }
+
+    PlatformHandleInput(&GameInput);
+
     if (Game.Update) {
-      Game.Update(&GameMemory, &GameInput);
+      Game.Update(&GameMemory, &GameInput, DeltaTime.asSeconds());
     }
-    //PlatformHandleInput();
     PlatformWindow.clear();
     if (Game.Render) {
       Game.Render(&GameMemory);
     }
-    //PlatformRenderTriangle();
     PlatformWindow.display();
   }
   return 0;

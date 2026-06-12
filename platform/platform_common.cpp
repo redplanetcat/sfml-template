@@ -2,22 +2,27 @@ sf::CircleShape triangle;
 sf::RenderWindow PlatformWindow;
 sf::Event PlatformEvent;
 
-PLATFORM_HANDLE_INPUT(PlatformHandleInput) {
+void
+PlatformHandleInput(game_input* Input) {
   while (PlatformWindow.pollEvent(PlatformEvent)) {
     if (PlatformEvent.type == sf::Event::Closed) {
       PlatformWindow.close();
+    } else if (PlatformEvent.type == sf::Event::KeyPressed) {
+      Input->Keys[PlatformEvent.key.code] = true;
+    } else if (PlatformEvent.type == sf::Event::KeyReleased) {
+      Input->Keys[PlatformEvent.key.code] = false;
+    } else if (PlatformEvent.type == sf::Event::MouseButtonPressed) {
+      Input->MouseButtons[PlatformEvent.mouseButton.button] = true; 
+    } else if (PlatformEvent.type == sf::Event::MouseButtonReleased) {
+      Input->MouseButtons[PlatformEvent.mouseButton.button] = false; 
     } else if (PlatformEvent.type == sf::Event::MouseMoved) {
-      auto mouse_position = PlatformWindow.mapPixelToCoords({ PlatformEvent.mouseMove.x, PlatformEvent.mouseMove.y });
-      auto delta_position = mouse_position - triangle.getPosition();
-      float rotation = RAD2DEG((float)std::atan2(delta_position.y, delta_position.x)) + 90.f;
-
-      triangle.setRotation(rotation);
+      sf::Vector2f MousePosition = PlatformWindow.mapPixelToCoords({ PlatformEvent.mouseMove.x, PlatformEvent.mouseMove.y });
+      vec2 PreviousMousePosition = Input->MousePosition;
+      Input->MousePosition = { MousePosition.x, MousePosition.y };
+      Input->MouseDelta = { MousePosition.x - PreviousMousePosition.x, 
+                                MousePosition.y - PreviousMousePosition.y };
     }
   }
-}
-
-PLATFORM_RENDER_TRIANGLE(PlatformRenderTriangle) {
-  PlatformWindow.draw(triangle);
 }
 
 PLATFORM_DRAW_VERTICES(PlatformDrawVertices) {
@@ -37,11 +42,7 @@ PLATFORM_DRAW_VERTICES(PlatformDrawVertices) {
   PlatformWindow.draw(reinterpret_cast<sf::Vertex*>(Vertices), NumVertices, PlatformPrimitiveType);
 }
 
-
-
 void
 AssignPlatformCallbacks(game_memory* Memory) {
-  Memory->PlatformCallbacks.PlatformHandleInput = PlatformHandleInput;
-  Memory->PlatformCallbacks.PlatformRenderTriangle = PlatformRenderTriangle;
   Memory->PlatformCallbacks.PlatformDrawVertices = PlatformDrawVertices;
 }

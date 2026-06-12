@@ -24,9 +24,9 @@ LinuxLoadGameCode(char* SourceSOName, char* TempSOName) {
     printf("Loading game library...\n");
     Result.GameCodeSO = dlopen(SourceSOName, RTLD_LAZY);
     if (Result.GameCodeSO) {
-      Result.GameUpdate = (game_update_t*)dlsym(Result.GameCodeSO, "GameUpdate");
-      Result.GameRender = (game_render_t*)dlsym(Result.GameCodeSO, "GameRender");
-      Result.IsValid = Result.GameUpdate && Result.GameRender;
+      Result.Update = (game_update_t*)dlsym(Result.GameCodeSO, "GameUpdate");
+      Result.Render = (game_render_t*)dlsym(Result.GameCodeSO, "GameRender");
+      Result.IsValid = Result.Update && Result.Render;
       Result.SOLastWriteTime = LinuxGetLastWriteTime(SourceSOName);
       printf("Game dynamic library loaded successfully.\n");
     }
@@ -36,8 +36,8 @@ LinuxLoadGameCode(char* SourceSOName, char* TempSOName) {
 
   if (!Result.IsValid) {
     printf("Failed to load game dynamic library.\n");
-    Result.GameUpdate = 0;
-    Result.GameRender = 0;
+    Result.Update = 0;
+    Result.Render = 0;
   }
 
   return (Result);
@@ -52,37 +52,10 @@ LinuxUnloadGameCode(linux_game_code* GameCode) {
     GameCode->GameCodeSO = 0;
   }
   GameCode->IsValid = false;
-  GameCode->GameUpdate = 0;
-  GameCode->GameRender = 0;
+  GameCode->Update = 0;
+  GameCode->Render = 0;
 }
 
-internal void
-LinuxGetExecutableFilename(linux_state* State) {
-  ssize_t BinFilenameLength = readlink("/proc/self/exe", State->BinFilename, sizeof(State->BinFilename) - 1);
-  if (BinFilenameLength != -1) {
-    State->BinFilename[BinFilenameLength] = '\0';
-  } else {
-    perror("readlink");
-    return;
-  }
-  
-  State->BasePath = State->BinFilename;
-  for (char* Scan = State->BinFilename; *Scan; ++Scan) {
-    if (*Scan == '/') {
-      State->BasePath = Scan + 1;
-    }
-  }
-}
-
-internal void
-LinuxBuildExecutablePathFilename(linux_state* State, const char* Filename,
-                                 size_t DestCount, char* Dest)
-{
-  CatStrings((size_t)(State->BasePath - State->BinFilename), 
-             State->BinFilename,
-             StringLength(Filename), Filename,
-             DestCount, Dest);
-}
 
 int
 main(int argc, char** argv) {
@@ -106,17 +79,16 @@ main(int argc, char** argv) {
   }
   AssignPlatformCallbacks(&GameMemory);
 
-  game_input GameInput = { };
+  game_input GameInput = game_input();
 
   PlatformWindow.create(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "SFML Template");
   PlatformWindow.setFramerateLimit(60);
 
-  triangle = sf::CircleShape{ 50.f, 3u };
-  triangle.setFillColor({ 100u, 50u, 200u });
-  triangle.setOrigin({ std::round(triangle.getLocalBounds().width / 2.f), std::round(triangle.getLocalBounds().height / 2.f) });
-  triangle.setPosition({ WINDOW_WIDTH / 2.f, WINDOW_HEIGHT / 2.f });
+  sf::Clock DeltaClock;
 
   while (PlatformWindow.isOpen()) {
+    sf::Time DeltaTime = DeltaClock.restart();
+
     i64 NewSOWriteTime = LinuxGetLastWriteTime(SourceGameCodeSOFullPath);
     if (NewSOWriteTime != Game.SOLastWriteTime) {
       Game.SOLastWriteTime = NewSOWriteTime;
@@ -124,15 +96,16 @@ main(int argc, char** argv) {
       Game = LinuxLoadGameCode(SourceGameCodeSOFullPath,
                                TempGameCodeSOFullPath);
     }
-    if (Game.GameUpdate) {
-      Game.GameUpdate(&GameMemory, &GameInput);
+
+    PlatformHandleInput(&GameInput);
+
+    if (Game.Update) {
+      Game.Update(&GameMemory, &GameInput, DeltaTime.asSeconds());
     }
-    //PlatformHandleInput();
     PlatformWindow.clear();
-    if (Game.GameRender) {
-      Game.GameRender(&GameMemory);
+    if (Game.Render) {
+      Game.Render(&GameMemory);
     }
-    //PlatformRenderTriangle();
     PlatformWindow.display();
   }
   return 0;

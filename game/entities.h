@@ -1,0 +1,173 @@
+#ifndef ENTITIES_H
+
+#define MAX_ENTITIES 2048
+
+enum class kind {
+  Nil,
+  Player,
+  Apple,
+  Stone
+};
+
+enum entity_flags : u32 {
+  Drawable = 1 << 0,
+  Dead = 1 << 1,
+};
+
+struct entity_ref {
+  u32 Idx;
+  u32 Gen;
+
+  internal entity_ref Nil() {
+    return { 0, 0 };
+  }
+};
+
+struct entity {
+  entity_ref Parent;
+  entity_ref Next;
+  vec2 Pos;
+  vec2 Size;
+  vec2 Collider;
+  kind Kind;
+  color Color;
+  f32 Rot;
+  f32 Timer;
+  f32 TimerLength;
+  u32 Z;
+  u32 Flags;
+
+  operator bool() const {
+    return Kind != kind::Nil;
+  }
+
+};
+
+
+
+struct entity_manager {
+  entity Entities[MAX_ENTITIES];
+  b32 Used[MAX_ENTITIES];
+  u32 Gen[MAX_ENTITIES];
+  u32 FirstFree = 1;
+  u32 NextFree[MAX_ENTITIES];
+  u32 EntitiesCount;
+  
+  struct entity_iter {
+    entity_iter(entity_manager* EntityManager, entity_ref EntityRef)
+      : Entities(EntityManager)
+      , Ref(EntityRef) { };
+
+    // Dereference operator (*iter)
+    entity 
+    operator*() const {
+      return Entities->Get(Ref);
+    }
+
+    // Arrow operator (iter->)
+    entity* 
+    operator->() {
+      return &Entities->Get(Ref);
+    }
+
+    // Prefix increment
+    entity_iter& 
+    operator++() {
+      Ref.Idx += 1;
+      while (!Entities->Used[Ref.Idx] && Ref.Idx < MAX_ENTITIES-1) {
+        Ref.Idx += 1;
+      }
+      Ref.Gen = Entities->Gen[Ref.Idx];
+      return *this;
+    }
+
+    // Postfix increment
+    entity_iter 
+    operator++(int) {
+      entity_iter tmp = *this;
+      ++(*this);
+      return tmp;
+    }
+
+    friend b32 
+    operator==(const entity_iter& IterA, const entity_iter& IterB) {
+      return IterA.Ref.Idx == IterB.Ref.Idx;
+    }
+
+    friend b32 
+    operator!=(const entity_iter& IterA, const entity_iter& IterB) {
+      return !(IterA == IterB);
+    }
+
+  private:
+    entity_manager* Entities;
+    entity_ref Ref;
+  };
+  
+  entity_ref 
+  Add(kind Kind) {
+    u32 Slot = FindEmptySlot();
+    printf("Found empty slot: %i", Slot);
+    if (Slot) {
+      Entities[Slot] = { };
+      Entities[Slot].Kind = Kind;
+      Used[Slot] = true;
+      Gen[Slot] += 1;
+      EntitiesCount += 1;
+      return { Slot, Gen[Slot] };
+    } else {
+      return entity_ref::Nil();
+    }
+  }
+
+  void 
+  Rem(entity_ref Ref) {
+    if (u32 Slot = deref(Ref)) {
+      Used[Slot] = false;
+      if (FirstFree) {
+        NextFree[Slot] = FirstFree;
+      }
+      FirstFree = Slot;
+      EntitiesCount -= 1;
+    }
+  }
+
+  entity& 
+  Get(entity_ref Ref) {
+    return Entities[deref(Ref)];
+  }
+
+  u32
+  Count() {
+    return EntitiesCount;
+  }
+
+  entity_iter begin() {
+    return entity_iter(this, entity_ref{ 1, Gen[1] });
+  }
+
+  entity_iter end() {
+    return entity_iter(this, entity_ref{ MAX_ENTITIES, Gen[MAX_ENTITIES] });
+  }
+
+private:
+  u32 
+  FindEmptySlot() {
+    return FirstFree;
+  }
+
+  u32 
+  deref(entity_ref Ref) {
+    if (Ref.Idx > 0 && Ref.Idx < MAX_ENTITIES 
+        && Used[Ref.Idx] && Ref.Gen == Gen[Ref.Idx]) 
+    {
+      return Ref.Idx;
+    } else {
+      return 0;
+    }
+  }
+
+};
+
+#define ENTITIES_H
+#endif
