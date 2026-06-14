@@ -76,10 +76,10 @@ LinuxBuildExecutablePathFilename(linux_state* State, const char* Filename,
 //#define PLATFORM_LOAD_SHADER(name) u32 name(char* VertPath, char* FragPath);
 //typedef PLATFORM_LOAD_SHADER(platform_load_shader_t);
 PLATFORM_LOAD_SHADER(PlatformLoadShader) {
-  if (PlatformShadersCount >= MAX_SHADERS) {
+  if (GetPlatformState().ShadersCount >= MAX_SHADERS) {
     return 0;
   }
-  shader_file& ShaderFile = PlatformShaders[PlatformShadersCount];
+  shader_file& ShaderFile = GetPlatformState().Shaders[GetPlatformState().ShadersCount];
   LinuxBuildExecutablePathFilename(&LinuxState, VertPath,
                                    sizeof(ShaderFile.VertexFilename), 
                                    ShaderFile.VertexFilename);
@@ -89,7 +89,7 @@ PLATFORM_LOAD_SHADER(PlatformLoadShader) {
   if (ShaderFile.Shader.loadFromFile(ShaderFile.VertexFilename, 
                                      ShaderFile.FragmentFilename))
   {
-    return PlatformShadersCount++;
+    return GetPlatformState().ShadersCount++;
   }
   return 0;
 }

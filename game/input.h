@@ -1,7 +1,7 @@
 #ifndef INPUT_H
 
 enum key {
-    Unknown = -1, ///< Unhandled key
+    UnknownKey = -1, ///< Unhandled key
     A = 0,        ///< The A key
     B,            ///< The B key
     C,            ///< The C key
@@ -38,7 +38,7 @@ enum key {
     Num7,         ///< The 7 key
     Num8,         ///< The 8 key
     Num9,         ///< The 9 key
-    Escape,       ///< The Escape key
+    Esc,       ///< The Escape key
     LControl,     ///< The left Control key
     LShift,       ///< The left Shift key
     LAlt,         ///< The left Alt key

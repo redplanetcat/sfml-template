@@ -72,11 +72,6 @@ main(int argc, char** argv) {
   linux_game_code Game = LinuxLoadGameCode(SourceGameCodeSOFullPath, 
                                            TempGameCodeSOFullPath);
 
-  char DefaultFontPath[PLATFORM_FILENAME_COUNT];
-  LinuxBuildExecutablePathFilename(&LinuxState, "Resources/Fonts/Roboto-Medium.ttf",
-                                   sizeof(DefaultFontPath), DefaultFontPath);
-  PlatformDefaultFont.loadFromFile(DefaultFontPath);
-
   game_memory GameMemory = {};
   if (AllocatePlatformMemory(&GameMemory) != 0) {
     printf("Failed to allocate memory on a host platform.");
@@ -86,12 +81,16 @@ main(int argc, char** argv) {
 
   game_input GameInput = game_input();
 
-  PlatformWindow.create(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "SFML Template");
-  PlatformWindow.setFramerateLimit(60);
+  platform_state& State = GetPlatformState();
+  State.Window.setFramerateLimit(60);
+  char DefaultFontPath[PLATFORM_FILENAME_COUNT];
+  LinuxBuildExecutablePathFilename(&LinuxState, "Resources/Fonts/Roboto-Medium.ttf",
+                                   sizeof(DefaultFontPath), DefaultFontPath);
+  State.DefaultFont.loadFromFile(DefaultFontPath);
 
   sf::Clock DeltaClock;
 
-  while (PlatformWindow.isOpen()) {
+  while (State.Window.isOpen()) {
     sf::Time DeltaTime = DeltaClock.restart();
 
     i64 NewSOWriteTime = LinuxGetLastWriteTime(SourceGameCodeSOFullPath);
@@ -107,11 +106,11 @@ main(int argc, char** argv) {
     if (Game.Update) {
       Game.Update(&GameMemory, &GameInput, DeltaTime.asSeconds());
     }
-    PlatformWindow.clear();
+    State.Window.clear();
     if (Game.Render) {
       Game.Render(&GameMemory);
     }
-    PlatformWindow.display();
+    State.Window.display();
   }
   return 0;
 }

@@ -11,12 +11,12 @@ struct win32_shader_file {
   char VertexFilename[PLATFORM_FILENAME_COUNT];
   char FragmentFilename[PLATFORM_FILENAME_COUNT];
 };
-global win32_state Win32State;
 
 struct win32_state {
     char ExeFilename[PLATFORM_FILENAME_COUNT];
     char* BasePathPtr;
 };
+global win32_state Win32State;
 
 struct win32_game_code {
     HMODULE GameCodeDLL;

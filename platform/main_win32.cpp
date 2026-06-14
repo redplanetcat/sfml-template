@@ -2,9 +2,7 @@
 #include <cmath>
 #include <cstring>
 #include <array>
-#define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
-#define VC_EXTRALEAN
 #include <windows.h>
 #include "main_win32.h"
 #include "platform_common.h"
@@ -16,6 +14,7 @@
 internal win32_game_code
 Win32LoadGameCode(char* SourceDLLName, char* TempDLLName) {
     win32_game_code Result = {};
+
     CopyFile(SourceDLLName, TempDLLName, FALSE);
     Result.GameCodeDLL = LoadLibraryA("libgame.dll");
     if (Result.GameCodeDLL) {
@@ -28,8 +27,8 @@ Win32LoadGameCode(char* SourceDLLName, char* TempDLLName) {
 
     if (!Result.IsValid) {
         printf("Failed to load game dynamic library.\n");
-        GameCode->Update = 0;
-        GameCode->Render = 0;
+        Result.Update = 0;
+        Result.Render = 0;
     }
 
     return (Result);
@@ -48,37 +47,41 @@ Win32UnloadGameCode(win32_game_code* GameCode) {
 }
 
 int main(int argc, char** argv) {
-    Win32GetExecutableFilename(&Win32State);
+  Win32GetExecutableFilename(&Win32State);
 
-    char SourceGameCodeDLLFullPath[PLATFORM_FILENAME_COUNT];
-    Win32BuildExecutablePathFilename(&Win32State, "libgame.dll",
-                                     sizeof(SourceGameCodeDLLFullPath), SourceGameCodeDLLFullPath);
-    char TempGameCodeDLLFullPath[PLATFORM_FILENAME_COUNT];
-    Win32BuildExecutablePathFilename(&Win32State, "libgame_temp.dll",
-                                     sizeof(TempGameCodeDLLFullPath), TempGameCodeDLLFullPath);
+  char SourceGameCodeDLLFullPath[PLATFORM_FILENAME_COUNT];
+  Win32BuildExecutablePathFilename(&Win32State, "libgame.dll",
+                                   sizeof(SourceGameCodeDLLFullPath), SourceGameCodeDLLFullPath);
+  char TempGameCodeDLLFullPath[PLATFORM_FILENAME_COUNT];
+  Win32BuildExecutablePathFilename(&Win32State, "libgame_temp.dll",
+                                   sizeof(TempGameCodeDLLFullPath), TempGameCodeDLLFullPath);
 
-    win32_game_code Game = Win32LoadGameCode(SourceGameCodeDLLFullPath,
-                                             TempGameCodeDLLFullPath);
+  win32_game_code Game = Win32LoadGameCode(SourceGameCodeDLLFullPath,
+                                           TempGameCodeDLLFullPath);
 
-    game_memory GameMemory = {};
-    if (AllocatePlatformMemory(&GameMemory) != 0) {
-        printf("Failed to allocate memory on a host platform.");
-        return 1;
-    }
-    AssignPlatformCallacks(&GameMemory);
+  game_memory GameMemory = {};
+  if (AllocatePlatformMemory(&GameMemory) != 0) {
+    printf("Failed to allocate memory on a host platform.");
+    return 1;
+  }
+  AssignPlatformCallbacks(&GameMemory);
 
-    game_input GameInput = game_input();
+  game_input GameInput = game_input();
 
-  PlatformWindow.create(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "SFML Template");
-  PlatformWindow.setFramerateLimit(60);
+  platform_state& State = GetPlatformState();
+  State.Window.setFramerateLimit(60);
+  char DefaultFontPath[PLATFORM_FILENAME_COUNT];
+  Win32BuildExecutablePathFilename(&Win32State, "Resources/Fonts/Roboto-Medium.ttf",
+                                   sizeof(DefaultFontPath), DefaultFontPath);
+  State.DefaultFont.loadFromFile(DefaultFontPath);
 
   sf::Clock DeltaClock;
 
-  while (PlatformWindow.isOpen()) {
+  while (State.Window.isOpen()) {
     sf::Time DeltaTime = DeltaClock.restart();
 
-    FILETIME NewDLLWriteTime = Win32GetLastWrieTime(SourceGameCodeDLLFullPath);
-    if (CompareFileTime(&NewDLLWriteTime, Game.DLLLastWriteTime)) {
+    FILETIME NewDLLWriteTime = Win32GetLastWriteTime(SourceGameCodeDLLFullPath);
+    if (CompareFileTime(&NewDLLWriteTime, &Game.DLLLastWriteTime)) {
       Game.DLLLastWriteTime = NewDLLWriteTime;
       Win32UnloadGameCode(&Game);
       Game = Win32LoadGameCode(SourceGameCodeDLLFullPath,
@@ -90,11 +93,11 @@ int main(int argc, char** argv) {
     if (Game.Update) {
       Game.Update(&GameMemory, &GameInput, DeltaTime.asSeconds());
     }
-    PlatformWindow.clear();
+    State.Window.clear();
     if (Game.Render) {
       Game.Render(&GameMemory);
     }
-    PlatformWindow.display();
+    State.Window.display();
   }
   return 0;
 }

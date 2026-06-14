@@ -7,9 +7,9 @@ AllocatePlatformMemory(game_memory* Memory) {
                                           MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
   Memory->ScratchStorage = VirtualAlloc(0, Memory->ScratchStorageSize,
                                           MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-  if ((Memory->PermanentStorage != 0) || (Memory->ScratchStorage != 0)) {
-    return 1;
+  if ((Memory->PermanentStorage != 0) && (Memory->ScratchStorage != 0)) {
+    return 0;
   }
 
-  return 0;
+  return 1;
 }

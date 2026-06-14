@@ -13,7 +13,17 @@ struct player_settings {
   i32 AppleScore = 100;
 };
 
-inline constexpr player_settings PlayerSettings = player_settings();
+constexpr player_settings PlayerSettings = player_settings();
+
+internal void 
+MakeQuad(vertex* v, f32 x, f32 y, f32 width, f32 height, color c) {
+  v[0] = {{x, y}, { c.r, c.g, c.b, c.a }, {0.f, 0.f}};
+  v[1] = {{x+width, y}, { c.r, c.g, c.b, c.a }, {0.f, 0.f}};
+  v[2] = {{x+width, y+height}, { c.r, c.g, c.b, c.a }, {0.f, 0.f}};
+  v[3] = {{x, y}, { c.r, c.g, c.b, c.a }, {0.f, 0.f}};
+  v[4] = {{x, y+height}, { c.r, c.g, c.b, c.a }, {0.f, 0.f}};
+  v[5] = {{x+width, y+height}, { c.r, c.g, c.b, c.a }, {0.f, 0.f}};
+}
 
 internal void
 CreatePlayer(game_state* GameState) {
@@ -207,6 +217,7 @@ UpdatePlayer(game_state* GameState,
       WINDOW_HEIGHT
     };
     if (!LevelRect.Contains(PlayerRect)) {
+      printf("Out of bounds death!\n");
       OnPlayerDied(GameState, Callbacks);
     }
   } else if (GameState->RestartTimer <= 0.f) {
@@ -260,6 +271,7 @@ UpdateCollisions(game_state* GameState, platform_callbacks* Callbacks) {
         EIter->Collider.y
       };
       if (PlayerRect.Overlaps(StoneRect)) {
+        printf("Stoned death!\n");
         OnPlayerDied(GameState, Callbacks);
       }
     }

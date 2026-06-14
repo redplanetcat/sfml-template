@@ -56,6 +56,9 @@ struct entity_manager {
   u32 EntitiesCount;
 
   entity_manager() {
+    memset(Entities, 0, sizeof(Entities));
+    memset(Gen, 0, sizeof(Gen));
+    memset(Used, 0, sizeof(Used));
     for (u32 I = 1; I < MAX_ENTITIES-1; ++I) {
       NextFree[I] = I+1;
     }
