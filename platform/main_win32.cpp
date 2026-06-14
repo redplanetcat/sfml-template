@@ -2,14 +2,15 @@
 #include <cmath>
 #include <cstring>
 #include <array>
-#include "../common/strings.cpp"
-#include "main_win32.h"
-#include "fileops_win32.cpp"
-#include "platform_common.cpp"
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #define VC_EXTRALEAN
 #include <windows.h>
+#include "main_win32.h"
+#include "platform_common.h"
+#include "../common/strings.cpp"
+#include "fileops_win32.cpp"
+#include "platform_common.cpp"
 #include "memory_win32.cpp"
 
 internal win32_game_code
@@ -47,13 +48,12 @@ Win32UnloadGameCode(win32_game_code* GameCode) {
 }
 
 int main(int argc, char** argv) {
-    win32_state Win32State = {};
     Win32GetExecutableFilename(&Win32State);
 
-    char SourceGameCodeDLLFullPath[MAX_PATH];
+    char SourceGameCodeDLLFullPath[PLATFORM_FILENAME_COUNT];
     Win32BuildExecutablePathFilename(&Win32State, "libgame.dll",
                                      sizeof(SourceGameCodeDLLFullPath), SourceGameCodeDLLFullPath);
-    char TempGameCodeDLLFullPath[MAX_PATH];
+    char TempGameCodeDLLFullPath[PLATFORM_FILENAME_COUNT];
     Win32BuildExecutablePathFilename(&Win32State, "libgame_temp.dll",
                                      sizeof(TempGameCodeDLLFullPath), TempGameCodeDLLFullPath);
 

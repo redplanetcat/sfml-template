@@ -16,5 +16,13 @@ typedef uint64_t u64;
 typedef float f32;
 typedef double f64;
 
+enum rect_alignment {
+  TopLeft,
+  TopRight,
+  Center,
+  BottomLeft,
+  BottomRight
+};
+
 #define TYPES_H
 #endif

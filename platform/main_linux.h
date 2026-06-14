@@ -4,10 +4,14 @@
 #include "../game/game.h"
 #include <limits.h>
 
+#define PLATFORM_FILENAME_COUNT PATH_MAX
+
+
 struct linux_state {
-  char BinFilename[PATH_MAX]; 
-  char* BasePath;
+  char BinFilename[PLATFORM_FILENAME_COUNT]; 
+  char* BasePathPtr;
 };
+global linux_state LinuxState;
 
 struct linux_game_code {
   void* GameCodeSO;

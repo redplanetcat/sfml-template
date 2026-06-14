@@ -11,6 +11,8 @@
 #include <unistd.h>
 #include <time.h>
 #include "main_linux.h"
+#include "platform_common.h"
+
 #include "../common/strings.cpp"
 #include "fileops_linux.cpp"
 #include "memory_linux.cpp"
@@ -56,21 +58,24 @@ LinuxUnloadGameCode(linux_game_code* GameCode) {
   GameCode->Render = 0;
 }
 
-
 int
 main(int argc, char** argv) {
-  linux_state LinuxState = {};
   LinuxGetExecutableFilename(&LinuxState);
 
-  char SourceGameCodeSOFullPath[PATH_MAX];
+  char SourceGameCodeSOFullPath[PLATFORM_FILENAME_COUNT];
   LinuxBuildExecutablePathFilename(&LinuxState, "libgame.so",
                                    sizeof(SourceGameCodeSOFullPath), SourceGameCodeSOFullPath);
-  char TempGameCodeSOFullPath[PATH_MAX];
+  char TempGameCodeSOFullPath[PLATFORM_FILENAME_COUNT];
   LinuxBuildExecutablePathFilename(&LinuxState, "libgame_temp.so",
                                    sizeof(TempGameCodeSOFullPath), TempGameCodeSOFullPath);
-  
+
   linux_game_code Game = LinuxLoadGameCode(SourceGameCodeSOFullPath, 
                                            TempGameCodeSOFullPath);
+
+  char DefaultFontPath[PLATFORM_FILENAME_COUNT];
+  LinuxBuildExecutablePathFilename(&LinuxState, "Resources/Fonts/Roboto-Medium.ttf",
+                                   sizeof(DefaultFontPath), DefaultFontPath);
+  PlatformDefaultFont.loadFromFile(DefaultFontPath);
 
   game_memory GameMemory = {};
   if (AllocatePlatformMemory(&GameMemory) != 0) {

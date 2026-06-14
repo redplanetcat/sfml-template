@@ -27,10 +27,12 @@ struct entity {
   entity_ref Parent;
   entity_ref Next;
   vec2 Pos;
+  vec2 Dir;
   vec2 Size;
   vec2 Collider;
   kind Kind;
   color Color;
+  f32 Scale;
   f32 Rot;
   f32 Timer;
   f32 TimerLength;
@@ -49,11 +51,21 @@ struct entity_manager {
   entity Entities[MAX_ENTITIES];
   b32 Used[MAX_ENTITIES];
   u32 Gen[MAX_ENTITIES];
-  u32 FirstFree = 1;
+  u32 FirstFree;
   u32 NextFree[MAX_ENTITIES];
   u32 EntitiesCount;
+
+  entity_manager() {
+    for (u32 I = 1; I < MAX_ENTITIES-1; ++I) {
+      NextFree[I] = I+1;
+    }
+    FirstFree = 1;
+  }
   
   struct entity_iter {
+    entity_manager* Entities;
+    entity_ref Ref;
+
     entity_iter(entity_manager* EntityManager, entity_ref EntityRef)
       : Entities(EntityManager)
       , Ref(EntityRef) { };
@@ -98,21 +110,18 @@ struct entity_manager {
     operator!=(const entity_iter& IterA, const entity_iter& IterB) {
       return !(IterA == IterB);
     }
-
-  private:
-    entity_manager* Entities;
-    entity_ref Ref;
   };
   
   entity_ref 
   Add(kind Kind) {
     u32 Slot = FindEmptySlot();
-    printf("Found empty slot: %i", Slot);
+    printf("Found empty slot: %i\n", Slot);
     if (Slot) {
       Entities[Slot] = { };
       Entities[Slot].Kind = Kind;
       Used[Slot] = true;
       Gen[Slot] += 1;
+      FirstFree = NextFree[Slot];
       EntitiesCount += 1;
       return { Slot, Gen[Slot] };
     } else {

@@ -3,9 +3,19 @@
 #include "../common/types.h"
 #include "../game/game.h"
 
+#define PLATFORM_FILENAME_COUNT MAX_PATH
+
+struct win32_shader_file {
+  u32 Handle;
+  sf::Shader Shader;
+  char VertexFilename[PLATFORM_FILENAME_COUNT];
+  char FragmentFilename[PLATFORM_FILENAME_COUNT];
+};
+global win32_state Win32State;
+
 struct win32_state {
-    char ExeFilename[MAX_PATH];
-    char* BasePath;
+    char ExeFilename[PLATFORM_FILENAME_COUNT];
+    char* BasePathPtr;
 };
 
 struct win32_game_code {
@@ -13,7 +23,7 @@ struct win32_game_code {
     FILETIME DLLLastWriteTime;
     game_update_t* Update;
     game_render_t* Render;
-    b32 IsValid;    
+    b32 IsValid;
 };
 
 

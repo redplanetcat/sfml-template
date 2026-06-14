@@ -55,10 +55,10 @@ LinuxGetExecutableFilename(linux_state* State) {
     return;
   }
   
-  State->BasePath = State->BinFilename;
+  State->BasePathPtr = State->BinFilename;
   for (char* Scan = State->BinFilename; *Scan; ++Scan) {
     if (*Scan == '/') {
-      State->BasePath = Scan + 1;
+      State->BasePathPtr = Scan + 1;
     }
   }
 }
@@ -67,9 +67,30 @@ internal void
 LinuxBuildExecutablePathFilename(linux_state* State, const char* Filename,
                                  size_t DestCount, char* Dest)
 {
-  CatStrings((size_t)(State->BasePath - State->BinFilename), 
+  CatStrings((size_t)(State->BasePathPtr - State->BinFilename), 
              State->BinFilename,
              StringLength(Filename), Filename,
              DestCount, Dest);
+}
+
+//#define PLATFORM_LOAD_SHADER(name) u32 name(char* VertPath, char* FragPath);
+//typedef PLATFORM_LOAD_SHADER(platform_load_shader_t);
+PLATFORM_LOAD_SHADER(PlatformLoadShader) {
+  if (PlatformShadersCount >= MAX_SHADERS) {
+    return 0;
+  }
+  shader_file& ShaderFile = PlatformShaders[PlatformShadersCount];
+  LinuxBuildExecutablePathFilename(&LinuxState, VertPath,
+                                   sizeof(ShaderFile.VertexFilename), 
+                                   ShaderFile.VertexFilename);
+  LinuxBuildExecutablePathFilename(&LinuxState, FragPath,
+                                   sizeof(ShaderFile.FragmentFilename), 
+                                   ShaderFile.FragmentFilename);
+  if (ShaderFile.Shader.loadFromFile(ShaderFile.VertexFilename, 
+                                     ShaderFile.FragmentFilename))
+  {
+    return PlatformShadersCount++;
+  }
+  return 0;
 }
 

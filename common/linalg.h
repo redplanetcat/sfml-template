@@ -1,19 +1,5 @@
 #ifndef LINALG_H
 
-struct irect {
-  i32 x;
-  i32 y;
-  i32 w;
-  i32 h;
-};
-
-struct rect {
-  f32 x;
-  f32 y;
-  f32 w;
-  f32 h;
-};
-
 struct ivec2 {
   i32 x;
   i32 y;
@@ -23,7 +9,10 @@ struct vec2 {
   f32 x;
   f32 y;
   
-  internal inline f32 DistanceToLineSq(const vec2& Start, const vec2& End, const vec2& Point) {
+  inline f32 DistanceToLineSq(const vec2& Start, 
+                                       const vec2& End, 
+                                       const vec2& Point) const 
+  {
     const f32 A = End.y - Start.y;
     const f32 B = Start.x - End.x;
     const f32 C = Start.y * (End.x - Start.x) - Start.x * (End.y - Start.y);
@@ -32,17 +21,6 @@ struct vec2 {
     return ((Top * Top) / Bottom);
   }
 
-  b32 IsInRect(const rect& Rect) {
-    if (
-        (x <= Rect.x + Rect.w)
-        & (y <= Rect.y + Rect.h)
-        & (x >= Rect.x)
-        & (y >= Rect.y)
-    ) {
-      return true;
-    }
-    return false;
-  }
   
   inline f32 LenSq() const {
     return (x * x + y * y);
@@ -114,6 +92,57 @@ struct vec2 {
     x = x / Length;
     y = y / Length;
     return Length;
+  }
+};
+
+struct irect {
+  i32 x;
+  i32 y;
+  i32 w;
+  i32 h;
+};
+
+struct rect {
+  f32 x;
+  f32 y;
+  f32 w;
+  f32 h;
+
+  b32 Overlaps(const rect& Other) {
+    return !(
+        Other.x > x + w
+        || Other.x + Other.w < x
+        || Other.y > y + h
+        || Other.y + Other.h < y
+    );
+  }
+
+  b32 Contains(const rect& Other) {
+    return (
+        Other.x > x
+        && Other.y > y
+        && (Other.x + Other.w) < (x + w)
+        && (Other.y + Other.h) < (y + h)
+    );
+  }
+  
+  b32 Contains(const vec2& V) {
+    if (
+        (V.x <= x + w)
+        & (V.y <= y + h)
+        & (V.x >= x)
+        & (V.y >= y)
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  vec2 Center() {
+    return (vec2{
+      x + w / 2.f,
+      y + h / 2.f
+    });
   }
 };
 
