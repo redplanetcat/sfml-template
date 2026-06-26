@@ -1,3 +1,5 @@
+#version 130
+
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -12,7 +14,7 @@ void main()
   float warp_strength = -0.4;
   float warp_radius = 0.2;
 
-  vec2 uv = (gl_FragCoord - 0.5 * u_resolution.xy) / (u_resolution.y);
+  vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / (u_resolution.y);
 
   vec2 position = (u_position - 0.5 * u_resolution.xy) / (u_resolution.y);
   position.y = -position.y;
