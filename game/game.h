@@ -34,6 +34,12 @@ typedef PLATFORM_USE_SHADER(platform_use_shader_t);
                                                     vec2 Vector)
 typedef PLATFORM_SET_SHADER_UNIFORM_VEC2(platform_set_shader_uniform_vec2_t);
 
+#define PLATFORM_LOAD_SOUND(name) sound_id name(const char* SoundPath)
+typedef PLATFORM_LOAD_SOUND(platform_load_sound_t);
+
+#define PLATFORM_PLAY_SOUND(name) void name(sound_id SoundHandle)
+typedef PLATFORM_PLAY_SOUND(platform_play_sound_t);
+
 #define PLATFORM_CREATE_TEXT(name) text_id name(const char* String, u32 Size, color Color)
 typedef PLATFORM_CREATE_TEXT(platform_create_text_t);
 
@@ -58,6 +64,9 @@ struct platform_callbacks {
   platform_use_shader_t* PlatformUseShader;
   platform_set_shader_uniform_vec2_t* PlatformSetShaderUniformVec2;
 
+  platform_load_sound_t* PlatformLoadSound;
+  platform_play_sound_t* PlatformPlaySound;
+
   platform_create_text_t* PlatformCreateText;
   platform_update_text_t* PlatformUpdateText;
   platform_draw_text_t* PlatformDrawText;
@@ -78,8 +87,11 @@ struct game_state {
   draw_command CommandBuffer[MAX_DRAW_COMMANDS];
   u32 NumDrawCommands;
   texture_id AppleTextureHandle;
+  texture_id RockTextureHandle;
   texture_id PacmanTextureHandle;
   shader_id BackgroundShaderHandle;
+  sound_id CrunchSoundHandle;
+  sound_id DeathSoundHandle;
   text_id ScoreTextHandle;
   text_id RestartTextHandle;
   f32 RestartTimer;

@@ -71,6 +71,17 @@ PLATFORM_SET_SHADER_UNIFORM_VEC2(PlatformSetShaderUniformVec2) {
   Shader.setUniform(UniformName, sf::Vector2f(Vector.x, Vector.y));
 }
 
+PLATFORM_PLAY_SOUND(PlatformPlaySound) {
+  if (SoundHandle.Handle == 0) {
+    return;
+  }
+  if (GetPlatformState().SoundsCount <= SoundHandle.Handle) {
+    return;
+  }
+  sf::Sound& Sound = GetPlatformState().Sounds[SoundHandle.Handle].Sound;
+  Sound.play();
+}
+
 //#define PLATFORM_CREATE_TEXT(name) text_id name(const char* String, u32 Size, color Color);
 //typedef PLATFORM_CREATE_TEXT(platform_create_text_t);
 PLATFORM_CREATE_TEXT(PlatformCreateText) {
@@ -136,11 +147,17 @@ PLATFORM_DRAW_TEXT(PlatformDrawText) {
 void
 AssignPlatformCallbacks(game_memory* Memory) {
   Memory->PlatformCallbacks.PlatformDrawVertices = PlatformDrawVertices;
+
   Memory->PlatformCallbacks.PlatformLoadTexture = PlatformLoadTexture;
   Memory->PlatformCallbacks.PlatformUseTexture = PlatformUseTexture;
+
   Memory->PlatformCallbacks.PlatformLoadShader = PlatformLoadShader;
   Memory->PlatformCallbacks.PlatformUseShader = PlatformUseShader;
   Memory->PlatformCallbacks.PlatformSetShaderUniformVec2 = PlatformSetShaderUniformVec2;
+
+  Memory->PlatformCallbacks.PlatformLoadSound = PlatformLoadSound;
+  Memory->PlatformCallbacks.PlatformPlaySound = PlatformPlaySound;
+
   Memory->PlatformCallbacks.PlatformCreateText = PlatformCreateText;
   Memory->PlatformCallbacks.PlatformUpdateText = PlatformUpdateText;
   Memory->PlatformCallbacks.PlatformDrawText = PlatformDrawText;

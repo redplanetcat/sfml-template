@@ -11,8 +11,15 @@ struct shader_file {
   char FragmentFilename[PLATFORM_FILENAME_COUNT];
 };
 
+struct sound_file {
+  sf::SoundBuffer Buffer;
+  sf::Sound Sound;
+  char Filename[PLATFORM_FILENAME_COUNT];
+};
+
 #define MAX_TEXTURES 16
 #define MAX_SHADERS 16
+#define MAX_SOUNDS 16
 #define MAX_TEXTS 16
 
 struct platform_state {
@@ -24,6 +31,9 @@ struct platform_state {
   shader_file Shaders[MAX_SHADERS];
   u32 ShadersCount;
 
+  sound_file Sounds[MAX_SOUNDS];
+  u32 SoundsCount;
+
   sf::Text Text[MAX_TEXTS];
   u32 TextCount;
   sf::Font DefaultFont;
@@ -34,6 +44,7 @@ struct platform_state {
     : Window(sf::VideoMode(Width, Height), Title)
     , TexturesCount(1)
     , ShadersCount(1)
+    , SoundsCount(1)
     , TextCount(1)
     , RenderStates(sf::RenderStates::Default) {}
 };

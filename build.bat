@@ -17,7 +17,7 @@ echo "Building project..."
 if not exist debug (mkdir debug)
 pushd debug
 
-set "SFML_LINK=sfml-window-s-d.lib sfml-graphics-s-d.lib sfml-system-s-d.lib sfml-main-d.lib opengl32.lib gdi32.lib user32.lib winmm.lib advapi32.lib freetype.lib flac.lib ogg.lib openal32.lib vorbis.lib vorbisenc.lib vorbisfile.lib"
+set "SFML_LINK=sfml-window-s-d.lib sfml-graphics-s-d.lib sfml-audio-s-d.lib sfml-system-s-d.lib sfml-main-d.lib opengl32.lib gdi32.lib user32.lib winmm.lib advapi32.lib freetype.lib flac.lib ogg.lib openal32.lib vorbis.lib vorbisenc.lib vorbisfile.lib"
 
 set "DEFINES=-DPLATFORM_WINDOWS=1 -DDEBUG=1 -DSFML_STATIC=1"
 

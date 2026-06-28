@@ -111,6 +111,7 @@ SpawnStone(game_state* GameState) {
   Stone.Size = vec2{32.f, 32.f};
   Stone.Collider = Stone.Size;
   Stone.Color = color{100, 100, 100, 255};
+  Stone.Texture = GameState->RockTextureHandle;
   Stone.Timer = 0.5f;
   Stone.TimerLength = 0.5f;
   Stone.Flags |= (u32)entity_flags::Drawable;
@@ -187,9 +188,21 @@ GameInit(game_state* GameState, platform_callbacks* Callbacks) {
     GameState->AppleTextureHandle = Callbacks->PlatformLoadTexture("Resources/Textures/Apple.png");
     printf("Apple texture handle: %u\n", GameState->AppleTextureHandle.Handle);
   }
+  if (GameState->RockTextureHandle.Handle == 0) {
+    GameState->RockTextureHandle = Callbacks->PlatformLoadTexture("Resources/Textures/Rock.png");
+    printf("Rock texture handle: %u\n", GameState->RockTextureHandle.Handle);
+  }
   if (GameState->PacmanTextureHandle.Handle == 0) {
     GameState->PacmanTextureHandle = Callbacks->PlatformLoadTexture("Resources/Textures/Pacman.png");
     printf("Pacman texture handle: %u\n", GameState->PacmanTextureHandle.Handle);
+  }
+  if (GameState->CrunchSoundHandle.Handle == 0) {
+    GameState->CrunchSoundHandle = Callbacks->PlatformLoadSound("Resources/Sounds/Crunch.ogg");
+    printf("Crunch sound handle: %u\n", GameState->CrunchSoundHandle.Handle);
+  }
+  if (GameState->DeathSoundHandle.Handle == 0) {
+    GameState->DeathSoundHandle = Callbacks->PlatformLoadSound("Resources/Sounds/Death.ogg");
+    printf("Death sound handle: %u\n", GameState->DeathSoundHandle.Handle);
   }
   GameState->NumDrawCommands = 1;
   GameReset(GameState, Callbacks);
@@ -290,6 +303,7 @@ OnPlayerDied(game_state* GameState, platform_callbacks* Callbacks) {
     EM.Rem(GameState->PlayerRef);
   }
   GameState->RestartTimer = PlayerSettings.RestartTime;
+  Callbacks->PlatformPlaySound(GameState->DeathSoundHandle);
   printf("Player died! Timer: %f\n", GameState->RestartTimer);
 }
 
@@ -352,6 +366,7 @@ OnAppleCollect(entity_ref AppleRef, game_state* GameState, platform_callbacks* C
   if (GameState->Score % 1000 == 0) {
     SpawnStone(GameState);
   }
+  Callbacks->PlatformPlaySound(GameState->CrunchSoundHandle);
 }
 
 internal void

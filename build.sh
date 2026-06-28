@@ -13,7 +13,7 @@ echo "Building project..."
 
 mkdir -p debug
 
-SFML_LINK_FLAGS="-lsfml-window-d -lsfml-graphics-d -lsfml-system-d"
+SFML_LINK_FLAGS="-lsfml-window-d -lsfml-graphics-d -lsfml-audio-d -lsfml-system-d"
 WARNING_FLAGS="-Wall -Wextra -Wconversion -Wsign-conversion -Wno-unused-parameter -Wno-unused-function -Werror -Wno-unused-variable -Wno-unused-but-set-variable"
 FLAGS="-g -march=native -fno-stack-protector -ftree-vectorize -ffast-math -fno-rtti -fno-exceptions -static-libgcc -static-libstdc++"
 DEFINES="-DPLATFORM_LINUX=1 -DDEBUG=1 -DARM_BUILD"

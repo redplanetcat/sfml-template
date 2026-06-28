@@ -31,6 +31,10 @@ struct shader_id {
   u32 Handle;
 };
 
+struct sound_id {
+  u32 Handle;
+};
+
 struct text_id {
   u32 Handle;
 };

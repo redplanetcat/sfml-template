@@ -111,3 +111,18 @@ PLATFORM_LOAD_SHADER(PlatformLoadShader) {
   return ShaderID;
 }
 
+PLATFORM_LOAD_SOUND(PlatformLoadSound) {
+  sound_id SoundID = { };
+  if (GetPlatformState().SoundsCount >= MAX_SOUNDS) {
+    return SoundID;
+  }
+  sound_file& SoundFile = GetPlatformState().Sounds[GetPlatformState().SoundsCount];
+  LinuxBuildExecutablePathFilename(&LinuxState, SoundPath,
+                                   sizeof(SoundFile.Filename),
+                                   SoundFile.Filename);
+  if (SoundFile.Buffer.loadFromFile(SoundFile.Filename)) {
+    SoundFile.Sound.setBuffer(SoundFile.Buffer);
+    SoundID.Handle = GetPlatformState().SoundsCount++;
+  }
+  return SoundID;
+}
