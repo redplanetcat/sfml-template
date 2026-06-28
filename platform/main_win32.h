@@ -3,6 +3,9 @@
 #include "../common/types.h"
 #include "../game/game.h"
 
+FILE _iob[] = { *stdin, *stdout, *stderr };
+extern "C" FILE * __cdecl __iob_func(void) { return _iob; }
+
 #define PLATFORM_FILENAME_COUNT MAX_PATH
 
 struct win32_shader_file {

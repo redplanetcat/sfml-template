@@ -252,7 +252,7 @@ FlushCommandBuffer(game_state* GameState, platform_callbacks* Callbacks) {
   shader_id Shader = { };
   vertex VertexBuffer[MAX_DRAW_COMMANDS * 6];
   u32 NumVertices = 0;
-  b32 RenderStateChanged;
+  b32 RenderStateChanged = false;
   for (u32 I = 1; I < GameState->NumDrawCommands; ++I) {
     draw_command* Command = &GameState->CommandBuffer[I];
     RenderStateChanged = ((Command->Shader.Handle != Shader.Handle)
