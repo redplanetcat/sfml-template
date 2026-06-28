@@ -9,9 +9,10 @@ enum class kind {
   Stone
 };
 
-enum entity_flags : u32 {
+enum class entity_flags : u32 {
   Drawable = 1 << 0,
   Dead = 1 << 1,
+  Flip = 1 << 2,
 };
 
 struct entity_ref {
@@ -30,6 +31,8 @@ struct entity {
   vec2 Dir;
   vec2 Size;
   vec2 Collider;
+  texture_id Texture;
+  shader_id Shader;
   kind Kind;
   color Color;
   f32 Scale;

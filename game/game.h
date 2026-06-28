@@ -17,21 +17,27 @@
                                                primitive_type PrimitiveType)
 typedef PLATFORM_DRAW_VERTICES(platform_draw_vertices_t);
 
-#define PLATFORM_LOAD_SHADER(name) u32 name(const char* VertPath, const char* FragPath)
+#define PLATFORM_LOAD_TEXTURE(name) texture_id name(const char* TexturePath)
+typedef PLATFORM_LOAD_TEXTURE(platform_load_texture_t);
+
+#define PLATFORM_USE_TEXTURE(name) void name(texture_id TextureHandle)
+typedef PLATFORM_USE_TEXTURE(platform_use_texture_t);
+
+#define PLATFORM_LOAD_SHADER(name) shader_id name(const char* VertPath, const char* FragPath)
 typedef PLATFORM_LOAD_SHADER(platform_load_shader_t);
 
-#define PLATFORM_USE_SHADER(name) void name(u32 ShaderHandle)
+#define PLATFORM_USE_SHADER(name) void name(shader_id ShaderHandle)
 typedef PLATFORM_USE_SHADER(platform_use_shader_t);
 
-#define PLATFORM_SET_SHADER_UNIFORM_VEC2(name) void name(u32 ShaderHandle, \
+#define PLATFORM_SET_SHADER_UNIFORM_VEC2(name) void name(shader_id ShaderHandle, \
                                                     const char* UniformName, \
                                                     vec2 Vector)
 typedef PLATFORM_SET_SHADER_UNIFORM_VEC2(platform_set_shader_uniform_vec2_t);
 
-#define PLATFORM_CREATE_TEXT(name) u32 name(const char* String, u32 Size, color Color)
+#define PLATFORM_CREATE_TEXT(name) text_id name(const char* String, u32 Size, color Color)
 typedef PLATFORM_CREATE_TEXT(platform_create_text_t);
 
-#define PLATFORM_UPDATE_TEXT(name) void name(u32 TextHandle, \
+#define PLATFORM_UPDATE_TEXT(name) void name(text_id TextHandle, \
                                              const char* String, \
                                              color Color, \
                                              vec2 Position, \
@@ -39,14 +45,19 @@ typedef PLATFORM_CREATE_TEXT(platform_create_text_t);
                                              rect_alignment Alignment)
 typedef PLATFORM_UPDATE_TEXT(platform_update_text_t);
 
-#define PLATFORM_DRAW_TEXT(name) void name(u32 TextHandle)
+#define PLATFORM_DRAW_TEXT(name) void name(text_id TextHandle)
 typedef PLATFORM_DRAW_TEXT(platform_draw_text_t);
 
 struct platform_callbacks {
   platform_draw_vertices_t* PlatformDrawVertices;
+
+  platform_load_texture_t* PlatformLoadTexture;
+  platform_use_texture_t* PlatformUseTexture;
+
   platform_load_shader_t* PlatformLoadShader;
   platform_use_shader_t* PlatformUseShader;
   platform_set_shader_uniform_vec2_t* PlatformSetShaderUniformVec2;
+
   platform_create_text_t* PlatformCreateText;
   platform_update_text_t* PlatformUpdateText;
   platform_draw_text_t* PlatformDrawText;
@@ -64,15 +75,16 @@ struct game_memory {
 struct game_state {
   entity_manager Entities;
   entity_ref PlayerRef;
-  u32 SortedEntities[MAX_ENTITIES];
-  vertex Vertices[MAX_VERTICES];
-  u32 BackgroundShaderHandle;
-  u32 NumVertices;
+  draw_command CommandBuffer[MAX_DRAW_COMMANDS];
+  u32 NumDrawCommands;
+  texture_id AppleTextureHandle;
+  texture_id PacmanTextureHandle;
+  shader_id BackgroundShaderHandle;
+  text_id ScoreTextHandle;
+  text_id RestartTextHandle;
   f32 RestartTimer;
   f32 PlayerSpeed;
   u32 Score;
-  u32 ScoreTextHandle;
-  u32 RestartTextHandle;
   b32 IsInitialized;
 };
 

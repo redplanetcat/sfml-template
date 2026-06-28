@@ -33,11 +33,28 @@ Win32BuildExecutablePathFilename(win32_state* State, const char* Filename,
                DestCount, Dest);
 }
 
-//#define PLATFORM_LOAD_SHADER(name) u32 name(char* VertPath, char* FragPath);
-//typedef PLATFORM_LOAD_SHADER(platform_load_shader_t);
+PLATFORM_LOAD_TEXTURE(PlatformLoadTexture) {
+  texture_id TextureID = { };
+  if (GetPlatformState().TexturesCount >= MAX_TEXTURES) {
+    return TextureID;
+  }
+  texture_file& TextureFile = GetPlatformState().Textures[GetPlatformState().TexturesCount];
+  Win32BuildExecutablePathFilename(&Win32State, TexturePath,
+                               sizeof(TextureFile.Filename),
+                               TextureFile.Filename);
+  if (TextureFile.Texture.loadFromFile(TextureFile.Filename)) {
+    TextureID.Handle = GetPlatformState().TexturesCount++;
+    sf::Vector2u size = TextureFile.Texture.getSize();
+    TextureID.Width = (f32)size.x;
+    TextureID.Height = (f32)size.y;
+  }
+  return TextureID;
+}
+
 PLATFORM_LOAD_SHADER(PlatformLoadShader) {
+  shader_id ShaderID = { };
   if (GetPlatformState().ShadersCount >= MAX_SHADERS) {
-    return 0;
+    return ShaderID;
   }
   shader_file& ShaderFile = GetPlatformState().Shaders[GetPlatformState().ShadersCount];
   Win32BuildExecutablePathFilename(&Win32State, VertPath,
@@ -49,7 +66,7 @@ PLATFORM_LOAD_SHADER(PlatformLoadShader) {
   if (ShaderFile.Shader.loadFromFile(ShaderFile.VertexFilename, 
                                      ShaderFile.FragmentFilename))
   {
-    return GetPlatformState().ShadersCount++;
+    ShaderID.Handle = GetPlatformState().ShadersCount++;
   }
-  return 0;
+  return ShaderID;
 }

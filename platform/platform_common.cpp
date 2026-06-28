@@ -39,45 +39,55 @@ PLATFORM_DRAW_VERTICES(PlatformDrawVertices) {
   GetPlatformState().Window.draw(reinterpret_cast<sf::Vertex*>(Vertices), NumVertices, PlatformPrimitiveType, GetPlatformState().RenderStates);
 }
 
+PLATFORM_USE_TEXTURE(PlatformUseTexture) {
+  if (TextureHandle.Handle == 0) {
+    GetPlatformState().RenderStates.texture = nullptr;
+    return;
+  }
+  if (GetPlatformState().TexturesCount <= TextureHandle.Handle) {
+    return;
+  }
+  GetPlatformState().RenderStates.texture = &GetPlatformState().Textures[TextureHandle.Handle].Texture;
+}
 
-//#define PLATFORM_USE_SHADER(name) void name(u32 ShaderHandle);
-//typedef PLATFORM_USE_SHADER(platform_use_shader_t);
 PLATFORM_USE_SHADER(PlatformUseShader) {
-  if (ShaderHandle == 0) {
+  if (ShaderHandle.Handle == 0) {
     GetPlatformState().RenderStates.shader = nullptr;
     return;
   }
-  if (GetPlatformState().ShadersCount <= ShaderHandle) {
+  if (GetPlatformState().ShadersCount <= ShaderHandle.Handle) {
     return;
   }
-  GetPlatformState().RenderStates.shader = &GetPlatformState().Shaders[ShaderHandle].Shader;
+  GetPlatformState().RenderStates.shader = &GetPlatformState().Shaders[ShaderHandle.Handle].Shader;
 }
 
-//#define PLATFORM_SET_SHADER_UNIFORM_VEC2(name) void name(u32 ShaderHandle, char* UniformName, vec2 Vector)
+//#define PLATFORM_SET_SHADER_UNIFORM_VEC2(name) void name(shader_id ShaderHandle, char* UniformName, vec2 Vector)
 //typedef PLATFORM_SET_SHADER_UNIFORM_VEC2(platform_set_shader_uniform_vec2_t);
 PLATFORM_SET_SHADER_UNIFORM_VEC2(PlatformSetShaderUniformVec2) {
-  if ((ShaderHandle == 0) || (GetPlatformState().ShadersCount <= ShaderHandle)) {
+  if ((ShaderHandle.Handle == 0) || (GetPlatformState().ShadersCount <= ShaderHandle.Handle)) {
     return;
   }
-  sf::Shader& Shader = GetPlatformState().Shaders[ShaderHandle].Shader;
+  sf::Shader& Shader = GetPlatformState().Shaders[ShaderHandle.Handle].Shader;
   Shader.setUniform(UniformName, sf::Vector2f(Vector.x, Vector.y));
 }
 
-//#define PLATFORM_CREATE_TEXT(name) u32 name(const char* String, u32 Size, color Color);
+//#define PLATFORM_CREATE_TEXT(name) text_id name(const char* String, u32 Size, color Color);
 //typedef PLATFORM_CREATE_TEXT(platform_create_text_t);
 PLATFORM_CREATE_TEXT(PlatformCreateText) {
+  text_id TextID = { };
   if (GetPlatformState().TextCount >= MAX_TEXTS) {
-    return 0;
+    return TextID;
   }
   sf::Text& Text = GetPlatformState().Text[GetPlatformState().TextCount];
   Text.setFont(GetPlatformState().DefaultFont);
   Text.setString(String);
   Text.setCharacterSize(Size);
   Text.setFillColor(sf::Color(Color.r, Color.g, Color.b, Color.a));
-  return GetPlatformState().TextCount++;
+  TextID.Handle = GetPlatformState().TextCount++;
+  return TextID;
 }
 
-/*#define PLATFORM_UPDATE_TEXT(name) void name(u32 TextHandle, \
+/*#define PLATFORM_UPDATE_TEXT(name) void name(text_id TextHandle, \
                                              const char* String, \
                                              color Color, \
                                              vec2 Position, \
@@ -85,10 +95,10 @@ PLATFORM_CREATE_TEXT(PlatformCreateText) {
                                              rect_alignment Alignment)
 typedef PLATFORM_UPDATE_TEXT(platform_update_text_t)*/
 PLATFORM_UPDATE_TEXT(PlatformUpdateText) {
-  if ((TextHandle == 0) || (GetPlatformState().TextCount <= TextHandle)) {
+  if ((TextHandle.Handle == 0) || (GetPlatformState().TextCount <= TextHandle.Handle)) {
     return;
   }
-  sf::Text& Text = GetPlatformState().Text[TextHandle];
+  sf::Text& Text = GetPlatformState().Text[TextHandle.Handle];
   Text.setString(String);
   Text.setFillColor(sf::Color(Color.r, Color.g, Color.b, Color.a));
   Text.setPosition(Position.x, Position.y);
@@ -115,20 +125,19 @@ PLATFORM_UPDATE_TEXT(PlatformUpdateText) {
   Text.setOrigin(Origin.x, Origin.y);
 }
 
-
-//#define PLATFORM_DRAW_TEXT(name) void name(u32 TextHandle)
-//typedef PLATFORM_DRAW_TEXT(platform_draw_text_t);
 PLATFORM_DRAW_TEXT(PlatformDrawText) {
-  if ((TextHandle == 0) || (GetPlatformState().TextCount <= TextHandle)) {
+  if ((TextHandle.Handle == 0) || (GetPlatformState().TextCount <= TextHandle.Handle)) {
     return;
   }
-  sf::Text& Text = GetPlatformState().Text[TextHandle];
+  sf::Text& Text = GetPlatformState().Text[TextHandle.Handle];
   GetPlatformState().Window.draw(Text);
 }
 
 void
 AssignPlatformCallbacks(game_memory* Memory) {
   Memory->PlatformCallbacks.PlatformDrawVertices = PlatformDrawVertices;
+  Memory->PlatformCallbacks.PlatformLoadTexture = PlatformLoadTexture;
+  Memory->PlatformCallbacks.PlatformUseTexture = PlatformUseTexture;
   Memory->PlatformCallbacks.PlatformLoadShader = PlatformLoadShader;
   Memory->PlatformCallbacks.PlatformUseShader = PlatformUseShader;
   Memory->PlatformCallbacks.PlatformSetShaderUniformVec2 = PlatformSetShaderUniformVec2;
