@@ -13,6 +13,9 @@ enum class entity_flags : u32 {
   Drawable = 1 << 0,
   Dead = 1 << 1,
   Flip = 1 << 2,
+  Damager = 1 << 3,
+  Pickup = 1 << 4,
+  SpawnAnimated = 1 << 5,
 };
 
 struct entity_ref {
@@ -66,6 +69,7 @@ struct entity_manager {
       NextFree[I] = I+1;
     }
     FirstFree = 1;
+    EntitiesCount = 0;
   }
   
   struct entity_iter {
@@ -92,7 +96,7 @@ struct entity_manager {
     entity_iter& 
     operator++() {
       Ref.Idx += 1;
-      while (!Entities->Used[Ref.Idx] && Ref.Idx < MAX_ENTITIES-1) {
+      while ((Ref.Idx < MAX_ENTITIES-1) && !Entities->Used[Ref.Idx]) {
         Ref.Idx += 1;
       }
       Ref.Gen = Entities->Gen[Ref.Idx];
@@ -121,7 +125,6 @@ struct entity_manager {
   entity_ref 
   Add(kind Kind) {
     u32 Slot = FindEmptySlot();
-    printf("Found empty slot: %i\n", Slot);
     if (Slot) {
       Entities[Slot] = { };
       Entities[Slot].Kind = Kind;
@@ -162,7 +165,7 @@ struct entity_manager {
   }
 
   entity_iter end() {
-    return entity_iter(this, entity_ref{ MAX_ENTITIES, Gen[MAX_ENTITIES] });
+    return entity_iter(this, entity_ref{ MAX_ENTITIES-1, Gen[MAX_ENTITIES-1] });
   }
 
 private:

@@ -7,6 +7,7 @@ call "%VISUAL_STUDIO_PATH%\vcvarsall.bat" x64
 set "PLATFORM_SRC_DIR=platform"
 set "GAME_SRC_DIR=game"
 set "COMMON_SRC_DIR=common"
+set "BUILD_DIR=debug"
 set "PLATFORM_OUT_NAME=main_win32.exe"
 set "GAME_OUT_NAME=libgame.dll"
 set "SFML_INCLUDE=..\SFML\include"
@@ -14,8 +15,39 @@ set "SFML_LIB=..\SFML\lib"
 
 echo "Building project..."
 
-if not exist debug (mkdir debug)
-pushd debug
+setlocal enabledelayedexpansion
+
+set "MARKER_FILE=build_marker"
+set "PLATFORM_SRC_CHANGED=0"
+set "GAME_SRC_CHANGED=0"
+if not exist "%MARKER_FILE%" (
+  set "PLATFORM_SRC_CHANGED=1"
+  set "GAME_SRC_CHANGED=1" 
+  type NUL > "%MARKER_FILE%"
+)
+
+for /f "delims=" %%F in ('xcopy "%PLATFORM_SRC_DIR%\*.cpp" "%BUILD_DIR%\%PLATFORM_OUT_NAME%" /D /L /Y 2^>nul') do (
+  echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1"
+)
+for /f "delims=" %%F in ('xcopy "%PLATFORM_SRC_DIR%\*.h" "%BUILD_DIR%\%PLATFORM_OUT_NAME%" /D /L /Y 2^>nul') do (
+  echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1"
+)
+for /f "delims=" %%F in ('xcopy "%GAME_SRC_DIR%\*.cpp" "%BUILD_DIR%\%GAME_OUT_NAME%" /D /L /Y 2^>nul') do (
+  echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "GAME_SRC_CHANGED=1"
+)
+for /f "delims=" %%F in ('xcopy "%GAME_SRC_DIR%\*.h" "%BUILD_DIR%\%GAME_OUT_NAME%" /D /L /Y 2^>nul') do (
+  echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "GAME_SRC_CHANGED=1"
+)
+for /f "delims=" %%F in ('xcopy "%COMMON_SRC_DIR%\*.cpp" "%BUILD_DIR%\%PLATFORM_OUT_NAME%" /D /L /Y 2^>nul') do (
+  echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1" || set "GAME_SRC_CHANGED=1"
+)
+for /f "delims=" %%F in ('xcopy "%COMMON_SRC_DIR%\*.h" "%BUILD_DIR%\%PLATFORM_OUT_NAME%" /D /L /Y 2^>nul') do (
+  echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1" || set "GAME_SRC_CHANGED=1"
+)
+
+if not exist "%BUILD_DIR%" (mkdir "%BUILD_DIR%")
+pushd "%BUILD_DIR%"
+set "MARKER_FILE=..\build_marker"
 
 set "SFML_LINK=sfml-window-s-d.lib sfml-graphics-s-d.lib sfml-audio-s-d.lib sfml-system-s-d.lib sfml-main-d.lib opengl32.lib gdi32.lib user32.lib winmm.lib advapi32.lib freetype.lib flac.lib ogg.lib openal32.lib vorbis.lib vorbisenc.lib vorbisfile.lib"
 
@@ -48,13 +80,23 @@ set WIN32_LINK=%WIN32_LINK% -incremental:no       &:: Perform full link each tim
 set DLL_LINK=               /EXPORT:GameRender
 set DLL_LINK=%DLL_LINK%     /EXPORT:GameUpdate
 
-cl %DEFINES% %FLAGS% %WARNING_LINK_FLAGS% /I"..\%SFML_INCLUDE%" -Fm:"main_win32.map" "..\%PLATFORM_SRC_DIR%\main_win32.cpp" %SFML_LINK% /link /pdb:"main_win32.pdb" /LIBPATH:"..\%SFML_LIB%" %WIN32_LINK% -subsystem:windows,5.2 /OUT:"%PLATFORM_OUT_NAME%"
+if "%PLATFORM_SRC_CHANGED%" == "1" (
+  cl %DEFINES% %FLAGS% %WARNING_LINK_FLAGS% /I"..\%SFML_INCLUDE%" -Fm:"main_win32.map" "..\%PLATFORM_SRC_DIR%\main_win32.cpp" %SFML_LINK% /link /pdb:"main_win32.pdb" /LIBPATH:"..\%SFML_LIB%" %WIN32_LINK% -subsystem:windows,5.2 /OUT:"%PLATFORM_OUT_NAME%"
+) else (
+  echo Platform build is up to date.
+)
 
-del *.pdb > NUL 2> NUL
-cl %DEFINES% %FLAGS% %WARNING_LINK_FLAGS% -Fm:"libgame.map" "..\%GAME_SRC_DIR%\game.cpp" -LD /link /pdb:"libgame%date:~-4,4%%date:~-10,2%%date:~-7,2%_%time:~0,2%%time:~3,2%%time:~6,2%.pdb" %WIN32_LINK% %DLL_LINK% /OUT:"%GAME_OUT_NAME%"
+if "%GAME_SRC_CHANGED%" == "1" (
+  del *.pdb > NUL 2> NUL
+  cl %DEFINES% %FLAGS% %WARNING_LINK_FLAGS% -Fm:"libgame.map" "..\%GAME_SRC_DIR%\game.cpp" -LD /link /pdb:"libgame%date:~-4,4%%date:~-10,2%%date:~-7,2%_%time:~0,2%%time:~3,2%%time:~6,2%.pdb" %WIN32_LINK% %DLL_LINK% /OUT:"%GAME_OUT_NAME%"
+) else (
+  echo Game build is up to date.
+)
+
 
 popd
 
-robocopy "%SFML_LIB%" "debug" *.dll
-robocopy "Resources" "debug\Resources" /E /MIR
-endlocal
+robocopy "%SFML_LIB%" "debug" *.dll >nul 2>&1
+robocopy "Resources" "debug\Resources" /E /MIR >nul 2>&1
+endlocal &::enabledelayedexpansion
+endlocal &::PATH

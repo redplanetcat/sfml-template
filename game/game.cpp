@@ -32,7 +32,6 @@ RotatePoint(vec2 Position, vec2 Center, f32 Angle) {
 internal void
 RotateQuad(vertex* V, vec2 Center, f32 Rotation) {
   float RotationRad = Rotation * PI32 / 180.f;
-
   for (i32 I = 0; I < 6; ++I) {
     vertex* Vert = &V[I];
     Vert->Position = RotatePoint(Vert->Position, Center, RotationRad);
@@ -40,7 +39,9 @@ RotateQuad(vertex* V, vec2 Center, f32 Rotation) {
 }
 
 internal void 
-MakeQuad(vertex* V, f32 X, f32 Y, f32 Width, f32 Height, color C, f32 TexWidth, f32 TexHeight, f32 Rotation, b32 Flip) {
+MakeQuad(vertex* V, f32 X, f32 Y, f32 Width, f32 Height, color C,
+         f32 TexWidth, f32 TexHeight, f32 Rotation, b32 Flip) 
+{
   f32 FlipWidth = (Flip ? TexWidth : 0.f);
   V[0] = {{X, Y}, { C.r, C.g, C.b, C.a }, {0.f + FlipWidth, 0.f}};
   V[1] = {{X+Width, Y}, { C.r, C.g, C.b, C.a }, {TexWidth - FlipWidth, 0.f}};
@@ -98,6 +99,8 @@ SpawnApple(game_state* GameState) {
   Apple.Timer = 0.5f;
   Apple.TimerLength = 0.5f;
   Apple.Flags |= (u32)entity_flags::Drawable;
+  Apple.Flags |= (u32)entity_flags::Pickup;
+  Apple.Flags |= (u32)entity_flags::SpawnAnimated;
   printf("Created apple handle: %i with texture handle: %u [%f:%f]\n", AppleRef.Idx, Apple.Texture.Handle, Apple.Texture.Width, Apple.Texture.Height);
 }
 
@@ -115,6 +118,8 @@ SpawnStone(game_state* GameState) {
   Stone.Timer = 0.5f;
   Stone.TimerLength = 0.5f;
   Stone.Flags |= (u32)entity_flags::Drawable;
+  Stone.Flags |= (u32)entity_flags::Damager;
+  Stone.Flags |= (u32)entity_flags::SpawnAnimated;
 }
 
 internal void
@@ -370,7 +375,16 @@ OnAppleCollect(entity_ref AppleRef, game_state* GameState, platform_callbacks* C
 }
 
 internal void
-UpdateCollisions(game_state* GameState, platform_callbacks* Callbacks) {
+OnPlayerPickup(entity_ref PickupRef, game_state* GameState, platform_callbacks* Callbacks) {
+  entity_manager& EM = GameState->Entities;
+  entity& EPickup = EM.Get(PickupRef);
+  if (EPickup.Kind == kind::Apple) {
+    OnAppleCollect(PickupRef, GameState, Callbacks);
+  }
+}
+
+internal void
+UpdateDamagers(game_state* GameState, platform_callbacks* Callbacks) {
   entity_manager& EM = GameState->Entities;
   entity& Player = EM.Get(GameState->PlayerRef);
   if (!Player) {
@@ -383,17 +397,7 @@ UpdateCollisions(game_state* GameState, platform_callbacks* Callbacks) {
     Player.Collider.y
   };
   for (auto EIter = EM.begin(); EIter != EM.end(); ++EIter) {
-    if (EIter->Kind == kind::Apple) {
-      rect AppleRect = rect{
-        EIter->Pos.x - EIter->Collider.x/2.f,
-        EIter->Pos.y - EIter->Collider.y/2.f,
-        EIter->Collider.x,
-        EIter->Collider.y
-      };
-      if (PlayerRect.Overlaps(AppleRect)) {
-        OnAppleCollect(EIter.Ref, GameState, Callbacks);
-      }
-    } else if (EIter->Kind == kind::Stone) {
+    if ((EIter->Flags & (u32)entity_flags::Damager) == (u32)entity_flags::Damager) {
       rect StoneRect = rect{
         EIter->Pos.x - EIter->Collider.x/2.f,
         EIter->Pos.y - EIter->Collider.y/2.f,
@@ -403,6 +407,35 @@ UpdateCollisions(game_state* GameState, platform_callbacks* Callbacks) {
       if (PlayerRect.Overlaps(StoneRect)) {
         printf("Stoned death!\n");
         OnPlayerDied(GameState, Callbacks);
+      }
+    }
+  }
+
+}
+
+internal void
+UpdatePickups(game_state* GameState, platform_callbacks* Callbacks) {
+  entity_manager& EM = GameState->Entities;
+  entity& Player = EM.Get(GameState->PlayerRef);
+  if (!Player) {
+    return;
+  }
+  rect PlayerRect = rect{
+    Player.Pos.x - Player.Collider.x/2.f,
+    Player.Pos.y - Player.Collider.y/2.f,
+    Player.Collider.x,
+    Player.Collider.y
+  };
+  for (auto EIter = EM.begin(); EIter != EM.end(); ++EIter) {
+    if ((EIter->Flags & (u32)entity_flags::Pickup) == (u32)entity_flags::Pickup) {
+      rect PickupRect = rect{
+        EIter->Pos.x - EIter->Collider.x/2.f,
+        EIter->Pos.y - EIter->Collider.y/2.f,
+        EIter->Collider.x,
+        EIter->Collider.y
+      };
+      if (PlayerRect.Overlaps(PickupRect)) {
+        OnPlayerPickup(EIter.Ref, GameState, Callbacks);
       }
     }
   }
@@ -455,14 +488,16 @@ UpdateTimers(game_state* GameState, platform_callbacks* Callbacks, f32 Delta) {
 }
 
 internal void
-UpdateApplesAndStones(game_state* GameState, f32 Delta) {
+UpdateSpawnAnimations(game_state* GameState, platform_callbacks* Callbacks, f32 Delta) {
   entity_manager& EM = GameState->Entities;
   for (auto E = EM.begin(); E != EM.end(); ++E) {
-    if ((E->Kind == kind::Apple) || (E->Kind == kind::Stone)) {
+    if ((E->Flags & (u32)entity_flags::SpawnAnimated) == (u32)entity_flags::SpawnAnimated) {
       if (E->Timer > 0.f) {
         E->Timer = MAX(0.f, E->Timer - Delta);
         f32 Progress = (E->TimerLength - E->Timer)/E->TimerLength;
         E->Scale = f32(sin(Progress*PI32));
+      } else {
+        E->Flags &= ~(u32)entity_flags::SpawnAnimated;
       }
     }
   }
@@ -481,8 +516,9 @@ GAME_UPDATE(GameUpdate) {
 
   UpdateTimers(GameState, &Memory->PlatformCallbacks, Delta);
   UpdatePlayer(GameState, &Memory->PlatformCallbacks, Input, Delta);
-  UpdateApplesAndStones(GameState, Delta);
-  UpdateCollisions(GameState, &Memory->PlatformCallbacks);
+  UpdateSpawnAnimations(GameState, &Memory->PlatformCallbacks, Delta);
+  UpdateDamagers(GameState, &Memory->PlatformCallbacks);
+  UpdatePickups(GameState, &Memory->PlatformCallbacks);
   UpdateEntityGraphics(GameState);
 
   Input->SwapStates();
