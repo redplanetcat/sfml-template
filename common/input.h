@@ -115,11 +115,20 @@ enum key {
     Return    = Enter         ///< \deprecated Use Enter instead
 };
 
+enum class mouse_button{
+  Left,
+  Right,
+  Middle,
+  Extra1,
+  Extra2,
+  Count
+};
+
 struct game_input {
   b32 Keys[key::KeyCount];
   b32 PrevKeys[key::KeyCount];
-  b32 MouseButtons[4];
-  b32 PrevMouseButtons[4];
+  b32 MouseButtons[mouse_button::Count];
+  b32 PrevMouseButtons[mouse_button::Count];
   vec2 MousePosition;
   vec2 MouseDelta;
   f32 MouseWheel;

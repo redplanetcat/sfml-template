@@ -1,8 +1,32 @@
 #include "game.h"
+#include "entities.h"
+#include "gui.h"
+#include "drawing.h"
+#include "menu.h"
 #include <cstddef>
 #include <ctime>
 
-namespace ApplesGame {
+namespace apples_game {
+
+struct game_state {
+  gui::context GuiContext;
+  entity_manager Entities;
+  entity_ref PlayerRef;
+  draw_command CommandBuffer[MAX_DRAW_COMMANDS];
+  u32 NumDrawCommands;
+  texture_id AppleTextureHandle;
+  texture_id RockTextureHandle;
+  texture_id PacmanTextureHandle;
+  shader_id BackgroundShaderHandle;
+  sound_id CrunchSoundHandle;
+  sound_id DeathSoundHandle;
+  text_id ScoreTextHandle;
+  text_id RestartTextHandle;
+  f32 RestartTimer;
+  f32 PlayerSpeed;
+  u32 Score;
+  b32 IsInitialized;
+};
 
 struct player_settings {
   f32 InitialSpeed = 200.f;
@@ -128,6 +152,8 @@ GameReset(game_state* GameState, platform_callbacks* Callbacks) {
 
 internal void 
 GameInit(game_state* GameState, platform_callbacks* Callbacks) {
+  gui::GuiInit(&GameState->GuiContext);
+
   if (GameState->BackgroundShaderHandle.Handle == 0) {
     GameState->BackgroundShaderHandle = Callbacks->PlatformLoadShader("Resources/Shaders/background.vert", 
                                                                       "Resources/Shaders/background.frag");
@@ -241,7 +267,7 @@ FlushCommandBuffer(game_state* GameState, platform_callbacks* Callbacks) {
     MakeQuad(Quad, Command->Rect.x, Command->Rect.y,
              Command->Rect.w, Command->Rect.h, Command->Color,
              Texture.Width, Texture.Height, Command->Rotation, 
-             ((Command->Flags & (u32)draw_command_flags::Flip) == (u32)draw_command_flags::Flip));
+             (Command->Flags & (u32)draw_command_flags::Flip));
     PushVertices(VertexBuffer, &NumVertices, MAX_DRAW_COMMANDS * 6, Quad, 6);
   }
 
@@ -361,7 +387,7 @@ UpdateDamagers(game_state* GameState, platform_callbacks* Callbacks) {
     Player.Collider.y
   };
   for (auto EIter = EM.begin(); EIter != EM.end(); ++EIter) {
-    if ((EIter->Flags & (u32)entity_flags::Damager) == (u32)entity_flags::Damager) {
+    if (EIter->Flags & (u32)entity_flags::Damager) {
       rect StoneRect = rect{
         EIter->Pos.x - EIter->Collider.x/2.f,
         EIter->Pos.y - EIter->Collider.y/2.f,
@@ -391,7 +417,7 @@ UpdatePickups(game_state* GameState, platform_callbacks* Callbacks) {
     Player.Collider.y
   };
   for (auto EIter = EM.begin(); EIter != EM.end(); ++EIter) {
-    if ((EIter->Flags & (u32)entity_flags::Pickup) == (u32)entity_flags::Pickup) {
+    if (EIter->Flags & (u32)entity_flags::Pickup) {
       rect PickupRect = rect{
         EIter->Pos.x - EIter->Collider.x/2.f,
         EIter->Pos.y - EIter->Collider.y/2.f,
@@ -409,7 +435,7 @@ internal void
 UpdateEntityGraphics(game_state* GameState) {
   entity_manager& EM = GameState->Entities;
   for (const entity& E : EM) {
-    if ((E.Flags & (u32)entity_flags::Drawable) == (u32)entity_flags::Drawable) {
+    if (E.Flags & (u32)entity_flags::Drawable) {
       //vertex Quad[6];
       //vec2 ScaledSize = vec2{ E.Size.x * (1.f + E.Scale), E.Size.y * (1.f + E.Scale) };
       //MakeQuad(Quad, E.Pos.x - ScaledSize.x/2.f, E.Pos.y - ScaledSize.y/2.f,
@@ -423,7 +449,7 @@ UpdateEntityGraphics(game_state* GameState) {
       Command.Rotation = E.Rot;
       vec2 ScaledSize = vec2{ E.Size.x * (1.f + E.Scale), E.Size.y * (1.f + E.Scale) };
       vec2 Position = vec2{ E.Pos.x - ScaledSize.x / 2.f, E.Pos.y - ScaledSize.y / 2.f };
-      if ((E.Flags & (u32)entity_flags::Flip) == (u32)entity_flags::Flip) {
+      if (E.Flags & (u32)entity_flags::Flip) {
         Command.Flags |= (u32)draw_command_flags::Flip;
       }
       Command.Rect = rect{ Position.x, Position.y,
@@ -455,7 +481,7 @@ internal void
 UpdateSpawnAnimations(game_state* GameState, platform_callbacks* Callbacks, f32 Delta) {
   entity_manager& EM = GameState->Entities;
   for (auto E = EM.begin(); E != EM.end(); ++E) {
-    if ((E->Flags & (u32)entity_flags::SpawnAnimated) == (u32)entity_flags::SpawnAnimated) {
+    if (E->Flags & (u32)entity_flags::SpawnAnimated) {
       if (E->Timer > 0.f) {
         E->Timer = MAX(0.f, E->Timer - Delta);
         f32 Progress = (E->TimerLength - E->Timer)/E->TimerLength;
@@ -467,9 +493,9 @@ UpdateSpawnAnimations(game_state* GameState, platform_callbacks* Callbacks, f32 
   }
 }
 
-}
+} // namespace apples_game
 
-using namespace ApplesGame;
+using namespace apples_game;
 
 #if defined __cplusplus
 extern "C"
@@ -481,6 +507,8 @@ GAME_UPDATE(GameUpdate) {
     GameInit(GameState, &Memory->PlatformCallbacks);
     GameState->IsInitialized = true;
   }
+
+  GuiUpdateInput(&GameState->GuiContext, Input);
 
   UpdateTimers(GameState, &Memory->PlatformCallbacks, Delta);
   UpdatePlayer(GameState, &Memory->PlatformCallbacks, Input, Delta);
@@ -507,4 +535,5 @@ GAME_RENDER(GameRender) {
   //                                               primitive_type::Triangles);
   FlushCommandBuffer(GameState, &Memory->PlatformCallbacks);
   DrawText(GameState, &Memory->PlatformCallbacks);
+  DrawMenu(&GameState->GuiContext, &Memory->PlatformCallbacks);
 }

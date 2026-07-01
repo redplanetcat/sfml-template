@@ -9,9 +9,11 @@ PlatformHandleInput(game_input* Input) {
     } else if (Event.type == sf::Event::KeyReleased) {
       Input->Keys[Event.key.code] = false;
     } else if (Event.type == sf::Event::MouseButtonPressed) {
-      Input->MouseButtons[Event.mouseButton.button] = true; 
+      if (Event.mouseButton.button < (u32)mouse_button::Count) 
+        Input->MouseButtons[Event.mouseButton.button] = true; 
     } else if (Event.type == sf::Event::MouseButtonReleased) {
-      Input->MouseButtons[Event.mouseButton.button] = false; 
+      if (Event.mouseButton.button < (u32)mouse_button::Count)
+        Input->MouseButtons[Event.mouseButton.button] = false; 
     } else if (Event.type == sf::Event::MouseMoved) {
       sf::Vector2f MousePosition = GetPlatformState().Window.mapPixelToCoords({ Event.mouseMove.x, Event.mouseMove.y });
       vec2 PreviousMousePosition = Input->MousePosition;

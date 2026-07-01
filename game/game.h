@@ -2,14 +2,12 @@
 
 #include <cstring>
 #include <cstdio>
+#include <cmath>
 #include "../common/defines.h"
 #include "../common/types.h"
-#include <cmath>
-
 #include "../common/linalg.h"
-#include "graphics.h"
-#include "entities.h"
-#include "input.h"
+#include "../common/graphics.h"
+#include "../common/input.h"
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
@@ -82,24 +80,6 @@ struct game_memory {
   platform_callbacks PlatformCallbacks;
 };
 
-struct game_state {
-  entity_manager Entities;
-  entity_ref PlayerRef;
-  draw_command CommandBuffer[MAX_DRAW_COMMANDS];
-  u32 NumDrawCommands;
-  texture_id AppleTextureHandle;
-  texture_id RockTextureHandle;
-  texture_id PacmanTextureHandle;
-  shader_id BackgroundShaderHandle;
-  sound_id CrunchSoundHandle;
-  sound_id DeathSoundHandle;
-  text_id ScoreTextHandle;
-  text_id RestartTextHandle;
-  f32 RestartTimer;
-  f32 PlayerSpeed;
-  u32 Score;
-  b32 IsInitialized;
-};
 
 #define GAME_UPDATE(name) void name(game_memory* Memory, game_input* Input, f32 Delta)
 typedef GAME_UPDATE(game_update_t);
