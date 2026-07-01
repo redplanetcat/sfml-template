@@ -5,6 +5,7 @@
 #include "../common/defines.h"
 #include "../common/types.h"
 #include <cmath>
+
 #include "../common/linalg.h"
 #include "graphics.h"
 #include "entities.h"

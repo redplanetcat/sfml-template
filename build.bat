@@ -1,8 +1,6 @@
 @echo off
 
 setlocal
-set "VISUAL_STUDIO_PATH=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build"
-call "%VISUAL_STUDIO_PATH%\vcvarsall.bat" x64
 
 set "PLATFORM_SRC_DIR=platform"
 set "GAME_SRC_DIR=game"
@@ -13,18 +11,10 @@ set "GAME_OUT_NAME=libgame.dll"
 set "SFML_INCLUDE=..\SFML\include"
 set "SFML_LIB=..\SFML\lib"
 
-echo "Building project..."
-
 setlocal enabledelayedexpansion
 
-set "MARKER_FILE=build_marker"
 set "PLATFORM_SRC_CHANGED=0"
 set "GAME_SRC_CHANGED=0"
-if not exist "%MARKER_FILE%" (
-  set "PLATFORM_SRC_CHANGED=1"
-  set "GAME_SRC_CHANGED=1" 
-  type NUL > "%MARKER_FILE%"
-)
 
 for /f "delims=" %%F in ('xcopy "%PLATFORM_SRC_DIR%\*.cpp" "%BUILD_DIR%\%PLATFORM_OUT_NAME%" /D /L /Y 2^>nul') do (
   echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1"
@@ -45,9 +35,18 @@ for /f "delims=" %%F in ('xcopy "%COMMON_SRC_DIR%\*.h" "%BUILD_DIR%\%PLATFORM_OU
   echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1" || set "GAME_SRC_CHANGED=1"
 )
 
+if "%PLATFORM_SRC_CHANGED%" == "0" if "%GAME_SRC_CHANGED%" == "0" (
+  echo Build is up to date.
+  goto :BuildEnd
+)
+
+echo "Building project..."
+
+set "VISUAL_STUDIO_PATH=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build"
+call "%VISUAL_STUDIO_PATH%\vcvarsall.bat" x64
+
 if not exist "%BUILD_DIR%" (mkdir "%BUILD_DIR%")
 pushd "%BUILD_DIR%"
-set "MARKER_FILE=..\build_marker"
 
 set "SFML_LINK=sfml-window-s-d.lib sfml-graphics-s-d.lib sfml-audio-s-d.lib sfml-system-s-d.lib sfml-main-d.lib opengl32.lib gdi32.lib user32.lib winmm.lib advapi32.lib freetype.lib flac.lib ogg.lib openal32.lib vorbis.lib vorbisenc.lib vorbisfile.lib"
 
@@ -95,6 +94,8 @@ if "%GAME_SRC_CHANGED%" == "1" (
 
 
 popd
+
+:BuildEnd
 
 robocopy "%SFML_LIB%" "debug" *.dll >nul 2>&1
 robocopy "Resources" "debug\Resources" /E /MIR >nul 2>&1
