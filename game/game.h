@@ -8,6 +8,7 @@
 #include "../common/linalg.h"
 #include "../common/graphics.h"
 #include "../common/input.h"
+#include "../common/hash.h"
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600

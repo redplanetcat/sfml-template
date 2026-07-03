@@ -1,7 +1,7 @@
 #include "game.h"
 #include "entities.h"
-#include "gui.h"
 #include "drawing.h"
+#include "gui.h"
 #include "menu.h"
 #include <cstddef>
 #include <ctime>
@@ -12,8 +12,8 @@ struct game_state {
   gui::context GuiContext;
   entity_manager Entities;
   entity_ref PlayerRef;
-  draw_command CommandBuffer[MAX_DRAW_COMMANDS];
-  u32 NumDrawCommands;
+  draw_command _CommandBuffer[MAX_DRAW_COMMANDS];
+  command_stack CommandStack;
   texture_id AppleTextureHandle;
   texture_id RockTextureHandle;
   texture_id PacmanTextureHandle;
@@ -119,13 +119,6 @@ PushVertices(vertex* VerticesDst, u32* DstNumVertices, u32 DstMaxVertices,
   *DstNumVertices += NumVerticesToCopy;
 }
 
-inline void
-PushDrawCommand(game_state* GameState, draw_command* Command) {
-  draw_command* DestCommand = (GameState->NumDrawCommands < MAX_DRAW_COMMANDS
-                               ? &GameState->CommandBuffer[GameState->NumDrawCommands++]
-                               : &GameState->CommandBuffer[0]);
-  *DestCommand = *Command;
-}
 
 internal void
 UpdateScore(game_state* GameState, platform_callbacks* Callbacks, u32 Score) {
@@ -146,13 +139,15 @@ GameReset(game_state* GameState, platform_callbacks* Callbacks) {
   GameState->Entities = entity_manager();
   CreatePlayer(GameState);
   GameState->PlayerSpeed = PlayerSettings.InitialSpeed;
-  srand((unsigned int)time(NULL));
+  srand((u32)time(NULL));
   SpawnApple(GameState);
 }
 
 internal void 
 GameInit(game_state* GameState, platform_callbacks* Callbacks) {
   gui::GuiInit(&GameState->GuiContext);
+
+  GameState->CommandStack.Buffer = GameState->CommandBuffer;
 
   if (GameState->BackgroundShaderHandle.Handle == 0) {
     GameState->BackgroundShaderHandle = Callbacks->PlatformLoadShader("Resources/Shaders/background.vert", 
@@ -211,7 +206,8 @@ DrawBackground(game_state* GameState, platform_callbacks* Callbacks) {
     Position = Player.Pos;
   }
   vertex ScreenQuad[6];
-  MakeQuad(ScreenQuad, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, {255, 255, 255, 255}, 0.f, 0.f, 0.f, false);
+  MakeQuad(ScreenQuad, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 
+          {255, 255, 255, 255}, 0.f, 0.f, 0.f, false);
   Callbacks->PlatformUseShader(GameState->BackgroundShaderHandle);
   Callbacks->PlatformSetShaderUniformVec2(GameState->BackgroundShaderHandle,
                                           "u_resolution",
@@ -235,51 +231,6 @@ CompareCommands(const void* A, const void* B) {
   DrawStateB |= (CmdB->Shader.Handle << 8);
   DrawStateB |= CmdB->Texture.Handle;
   return ((i32)DrawStateA - (i32)DrawStateB);
-}
-
-internal void
-FlushCommandBuffer(game_state* GameState, platform_callbacks* Callbacks) {
-  qsort(GameState->CommandBuffer+1, 
-        GameState->NumDrawCommands-1, 
-        sizeof(draw_command), 
-        CompareCommands);
-  texture_id Texture = { };
-  shader_id Shader = { };
-  vertex VertexBuffer[MAX_DRAW_COMMANDS * 6];
-  u32 NumVertices = 0;
-  b32 RenderStateChanged = false;
-  for (u32 I = 1; I < GameState->NumDrawCommands; ++I) {
-    draw_command* Command = &GameState->CommandBuffer[I];
-    RenderStateChanged = ((Command->Shader.Handle != Shader.Handle)
-                       || (Command->Texture.Handle != Texture.Handle));
-    if (RenderStateChanged) {
-      if (NumVertices > 0) {
-        Callbacks->PlatformUseShader(Shader);
-        Callbacks->PlatformUseTexture(Texture);
-        Callbacks->PlatformDrawVertices(VertexBuffer, NumVertices, primitive_type::Triangles);
-        NumVertices = 0;
-      }
-      Shader = Command->Shader;
-      Texture = Command->Texture;
-    }
-
-    vertex Quad[6];
-    MakeQuad(Quad, Command->Rect.x, Command->Rect.y,
-             Command->Rect.w, Command->Rect.h, Command->Color,
-             Texture.Width, Texture.Height, Command->Rotation, 
-             (Command->Flags & (u32)draw_command_flags::Flip));
-    PushVertices(VertexBuffer, &NumVertices, MAX_DRAW_COMMANDS * 6, Quad, 6);
-  }
-
-  if (NumVertices > 0) {
-    if (RenderStateChanged) {
-      Callbacks->PlatformUseShader(Shader);
-      Callbacks->PlatformUseTexture(Texture);
-    }
-    Callbacks->PlatformDrawVertices(VertexBuffer, NumVertices, primitive_type::Triangles);
-  }
-
-  GameState->NumDrawCommands = 1;
 }
 
 internal void
@@ -436,11 +387,6 @@ UpdateEntityGraphics(game_state* GameState) {
   entity_manager& EM = GameState->Entities;
   for (const entity& E : EM) {
     if (E.Flags & (u32)entity_flags::Drawable) {
-      //vertex Quad[6];
-      //vec2 ScaledSize = vec2{ E.Size.x * (1.f + E.Scale), E.Size.y * (1.f + E.Scale) };
-      //MakeQuad(Quad, E.Pos.x - ScaledSize.x/2.f, E.Pos.y - ScaledSize.y/2.f,
-      //         ScaledSize.x, ScaledSize.y, E.Color);
-      //PushVertices(GameState, Quad, 6);
       draw_command Command = { };
       Command.Texture = E.Texture;
       Command.Shader = E.Shader;
@@ -454,7 +400,7 @@ UpdateEntityGraphics(game_state* GameState) {
       }
       Command.Rect = rect{ Position.x, Position.y,
                            ScaledSize.x, ScaledSize.y };
-      PushDrawCommand(GameState, &Command);
+      PushDrawCommand(&GameState.CommandStack, &Command);
     }
   }
 }
@@ -508,7 +454,7 @@ GAME_UPDATE(GameUpdate) {
     GameState->IsInitialized = true;
   }
 
-  GuiUpdateInput(&GameState->GuiContext, Input);
+  GuiUpdateInputState(&GameState->GuiContext, Input);
 
   UpdateTimers(GameState, &Memory->PlatformCallbacks, Delta);
   UpdatePlayer(GameState, &Memory->PlatformCallbacks, Input, Delta);
@@ -530,10 +476,7 @@ GAME_RENDER(GameRender) {
   }
   game_state* GameState = (game_state*)Memory->PermanentStorage;
   DrawBackground(GameState, &Memory->PlatformCallbacks);
-  //Memory->PlatformCallbacks.PlatformDrawVertices(GameState->Vertices, 
-  //                                               GameState->NumVertices, 
-  //                                               primitive_type::Triangles);
-  FlushCommandBuffer(GameState, &Memory->PlatformCallbacks);
+  Menu(&GameState->GuiContext);
+  FlushCommandStack(&GameState->CommandStack, &Memory->PlatformCallbacks);
   DrawText(GameState, &Memory->PlatformCallbacks);
-  DrawMenu(&GameState->GuiContext, &Memory->PlatformCallbacks);
 }

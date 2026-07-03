@@ -1,6 +1,6 @@
 #ifndef MENU_H
 
-void DrawMenu(gui::context* CTX, platform_callbacks* Callbacks) {
+void DrawMenu(gui::context* CTX) {
   gui::GuiBegin(CTX);
 
   gui::PanelBegin(CTX);

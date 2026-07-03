@@ -14,6 +14,21 @@ struct draw_command {
   u32 Flags;
 };
 
+struct command_stack {
+  draw_command* Buffer;
+  u32 BufferLength;
+  u32 NumCommands;
+};
+
+inline void
+PushDrawCommand(command_stack* CommandStack, draw_command* Command) {
+  draw_command* DestCommand = (CommandStack->NumCommands < CommandStack->BufferLength
+                               ? &CommandStack->Buffer[CommandStack->NumCommands++]
+                               : &CommandStack->Buffer[0]);
+  *DestCommand = *Command;
+}
+
+
 internal vec2
 RotatePoint(vec2 Position, vec2 Center, f32 Angle) {
   float TranslatedX = Position.x - Center.x;
@@ -51,6 +66,51 @@ MakeQuad(vertex* V, f32 X, f32 Y, f32 Width, f32 Height, color C,
 
   RotateQuad(V, vec2{X + Width/2.f, Y + Height/2.f}, Rotation);
 
+}
+
+internal void
+FlushCommandStack(command_stack* CommandStack, platform_callbacks* Callbacks) {
+  qsort(CommandStack->Buffer+1, 
+        CommandStack->NumCommands-1, 
+        sizeof(draw_command), 
+        CompareCommands);
+  texture_id Texture = { };
+  shader_id Shader = { };
+  vertex VertexBuffer[CommandStack->BufferLength * 6];
+  u32 NumVertices = 0;
+  b32 RenderStateChanged = false;
+  for (u32 I = 1; I < CommandStack->NumCommands; ++I) {
+    draw_command* Command = &CommandStack->Buffer[I];
+    RenderStateChanged = ((Command->Shader.Handle != Shader.Handle)
+                       || (Command->Texture.Handle != Texture.Handle));
+    if (RenderStateChanged) {
+      if (NumVertices > 0) {
+        Callbacks->PlatformUseShader(Shader);
+        Callbacks->PlatformUseTexture(Texture);
+        Callbacks->PlatformDrawVertices(VertexBuffer, NumVertices, primitive_type::Triangles);
+        NumVertices = 0;
+      }
+      Shader = Command->Shader;
+      Texture = Command->Texture;
+    }
+
+    vertex Quad[6];
+    MakeQuad(Quad, Command->Rect.x, Command->Rect.y,
+             Command->Rect.w, Command->Rect.h, Command->Color,
+             Texture.Width, Texture.Height, Command->Rotation, 
+             (Command->Flags & (u32)draw_command_flags::Flip));
+    PushVertices(VertexBuffer, &NumVertices, MAX_DRAW_COMMANDS * 6, Quad, 6);
+  }
+
+  if (NumVertices > 0) {
+    if (RenderStateChanged) {
+      Callbacks->PlatformUseShader(Shader);
+      Callbacks->PlatformUseTexture(Texture);
+    }
+    Callbacks->PlatformDrawVertices(VertexBuffer, NumVertices, primitive_type::Triangles);
+  }
+
+  CommandStack->NumCommands = 1;
 }
 
 #define DRAWING_H

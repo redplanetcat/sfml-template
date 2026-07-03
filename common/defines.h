@@ -9,7 +9,7 @@
 #define Gigabytes(Value) (Megabytes(Value) * 1024LL)
 
 #define PI32 3.14159265359f
-#define RAD2DEG(a) ((a) * 180.f / PI32) 
+#define RAD2DEG(a) ((a) * 180.f / PI32)
 
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
 
@@ -17,7 +17,7 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 #if DEBUG
-#define Assert(Expression) if(!(Expression)) {*(int*)0 = 0;}
+#define Assert(Expression) if(!(Expression)) { fprintf(stderr, "Assertion failed: %s:%d", __FILE__, __LINE__); *(int*)0 = 0;}
 #else
 #define Assert(Expression)
 #endif
