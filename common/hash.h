@@ -5,9 +5,9 @@
 /* 32-bit fnv-1a */
 internal void
 Hash(u32* Hash, const void* Data, u32 Size) {
-  const u8* p = data;
+  const u8* P = (const u8*)Data;
   while (Size--) {
-    *Hash = (*Hash ^ *p++) * 16777619;
+    *Hash = (*Hash ^ *P++) * 16777619;
   }
 }
 

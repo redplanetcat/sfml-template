@@ -1,6 +1,6 @@
 #ifndef INPUT_H
 
-enum key {
+enum class key: i32 {
     UnknownKey = -1, ///< Unhandled key
     A = 0,        ///< The A key
     B,            ///< The B key
@@ -115,7 +115,7 @@ enum key {
     Return    = Enter         ///< \deprecated Use Enter instead
 };
 
-enum class mouse_button{
+enum class mouse_button: u8{
   Left,
   Right,
   Middle,
@@ -125,66 +125,66 @@ enum class mouse_button{
 };
 
 struct game_input {
-  b32 Keys[key::KeyCount];
-  b32 PrevKeys[key::KeyCount];
-  b32 MouseButtons[mouse_button::Count];
-  b32 PrevMouseButtons[mouse_button::Count];
+  b32 Keys[(i32)key::KeyCount];
+  b32 PrevKeys[(i32)key::KeyCount];
+  b32 MouseButtons[(u8)mouse_button::Count];
+  b32 PrevMouseButtons[(u8)mouse_button::Count];
   vec2 MousePosition;
   vec2 MouseDelta;
   f32 MouseWheel;
 
   inline b32
-  IsKeyPressed(u32 Code) {
-    b32 KeyState = Keys[Code];
-    b32 PrevKeyState = PrevKeys[Code];
+  IsKeyPressed(key Code) {
+    b32 KeyState = Keys[(i32)Code];
+    b32 PrevKeyState = PrevKeys[(i32)Code];
     return ((PrevKeyState == false) && (KeyState == true));
   }
 
   inline b32
-  IsKeyDown(u32 Code) {
-    return Keys[Code];
+  IsKeyDown(key Code) {
+    return Keys[(i32)Code];
   }
 
   inline b32 
-  IsKeyReleased(u32 Code) {
-    b32 KeyState = Keys[Code];
-    b32 PrevKeyState = PrevKeys[Code];
+  IsKeyReleased(key Code) {
+    b32 KeyState = Keys[(i32)Code];
+    b32 PrevKeyState = PrevKeys[(i32)Code];
     return ((PrevKeyState == true) && (KeyState == false));
   }
 
   inline b32
-  IsKeyUp(u32 Code) {
-    return !Keys[Code];
+  IsKeyUp(key Code) {
+    return !Keys[(i32)Code];
   }
 
   inline b32
-  IsMouseButtonPressed(u32 Button) {
-    b32 ButtonState = MouseButtons[Button];
-    b32 PrevButtonState = PrevMouseButtons[Button];
+  IsMouseButtonPressed(mouse_button Button) {
+    b32 ButtonState = MouseButtons[(u8)Button];
+    b32 PrevButtonState = PrevMouseButtons[(u8)Button];
     return ((PrevButtonState == false) && (ButtonState == true));
   }
 
   inline b32 
-  IsMouseButtonDown(u32 Button) {
-    return MouseButtons[Button];
+  IsMouseButtonDown(mouse_button Button) {
+    return MouseButtons[(u8)Button];
   }
 
   inline b32 
-  IsMouseButtonReleased(u32 Button) {
-    b32 ButtonState = MouseButtons[Button];
-    b32 PrevButtonState = PrevMouseButtons[Button];
+  IsMouseButtonReleased(mouse_button Button) {
+    b32 ButtonState = MouseButtons[(u8)Button];
+    b32 PrevButtonState = PrevMouseButtons[(u8)Button];
     return ((PrevButtonState == true) && (ButtonState == false));
   }
 
   inline b32 
-  IsMouseButtonUp(u32 Button) {
-    return !MouseButtons[Button];
+  IsMouseButtonUp(mouse_button Button) {
+    return !MouseButtons[(u8)Button];
   }
 
   inline void
   SwapStates() {
-    memcpy(PrevKeys, Keys, key::KeyCount * sizeof(b32));
-    memcpy(PrevMouseButtons, MouseButtons, 4 * sizeof(b32));
+    memcpy(PrevKeys, Keys, sizeof(Keys));
+    memcpy(PrevMouseButtons, MouseButtons, sizeof(MouseButtons));
   }
 };
 

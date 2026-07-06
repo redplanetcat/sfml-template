@@ -65,7 +65,7 @@ GuiBegin(context* CTX) {
 
 internal void
 GuiUpdateInputState(context* CTX, game_input* Input) {
-  if (!Input->IsMouseButtonDown((u32)mouse_button::Left)) {
+  if (!Input->IsMouseButtonDown(mouse_button::Left)) {
     CTX->Active = {};
   }
 }
@@ -78,7 +78,7 @@ GuiUpdateElementInput(context* CTX, element_id Id, rect Rect) {
 internal element_id
 GuiGetId(context* CTX, const void* Data, u32 Size) {
   element_id Id = {};
-  Id.Id = (CTX->NumIDs > 0) ? ctx->IDs[CTX->NumIDs - 1] : HASH_INITIAL;
+  Id.Id = (CTX->NumIDs > 0) ? CTX->IDs[CTX->NumIDs - 1].Id : HASH_INITIAL;
   Hash(&Id.Id, Data, Size);
   return (Id);
 }
@@ -100,7 +100,7 @@ GuiPopId(context* CTX) {
 internal void
 GuiPushContainer(context* CTX, container* Container) {
   Assert(CTX->NumContainers < (sizeof(CTX->Containers) / sizeof(container)));
-  CTX->Conainers[CTX->NumContainers] = *Container;
+  CTX->Containers[CTX->NumContainers] = *Container;
   CTX->NumContainers++;
 }
 
@@ -113,18 +113,18 @@ GuiPopContainer(context* CTX) {
 internal void
 GuiDrawPanel(context* CTX, element_id Id, rect PanelRect) {
   draw_command Command = { };
-  Command.Texture = E.Texture;
-  Command.Shader = E.Shader;
-  Command.Z = E.Z;
-  Command.Color = E.Color;
-  Command.Rotation = E.Rot;
-  vec2 ScaledSize = vec2{ E.Size.x * (1.f + E.Scale), E.Size.y * (1.f + E.Scale) };
-  vec2 Position = vec2{ E.Pos.x - ScaledSize.x / 2.f, E.Pos.y - ScaledSize.y / 2.f };
-  if (E.Flags & (u32)entity_flags::Flip) {
-    Command.Flags |= (u32)draw_command_flags::Flip;
-  }
-  Command.Rect = rect{ Position.x, Position.y,
-                       ScaledSize.x, ScaledSize.y };
+  //Command.Texture = E.Texture;
+  //Command.Shader = E.Shader;
+  //Command.Z = E.Z;
+  //Command.Color = E.Color;
+  //Command.Rotation = E.Rot;
+  //vec2 ScaledSize = vec2{ E.Size.x * (1.f + E.Scale), E.Size.y * (1.f + E.Scale) };
+  //vec2 Position = vec2{ E.Pos.x - ScaledSize.x / 2.f, E.Pos.y - ScaledSize.y / 2.f };
+  //if (E.Flags & (u32)entity_flags::Flip) {
+  //  Command.Flags |= (u32)draw_command_flags::Flip;
+  //}
+  //Command.Rect = rect{ Position.x, Position.y,
+  //                     ScaledSize.x, ScaledSize.y };
   PushDrawCommand(CTX->CommandStack, &Command);
 
 }
@@ -141,7 +141,7 @@ GuiEnd(context* CTX) {
 
 internal void
 PanelBegin(context* CTX, const char* Name) {
-  GuiPushId(CTX, (const void*) Name, strlen(Name));
+  GuiPushId(CTX, (const void*) Name, (u32)strlen(Name));
 
 }
 
@@ -163,15 +163,15 @@ Image(context* CTX, image* Image) {
 internal b32
 Button(context* CTX, const char* Text) {
   b32 Clicked = false;
-  element_id Id = GuiGetId(ctx, (const void*)Text, strlen(Text));
+  element_id Id = GuiGetId(CTX, (const void*)Text, (u32)strlen(Text));
 
-  GuiUpdateElementInput(CTX, Id, ButtonRect);
+  //GuiUpdateElementInput(CTX, Id, ButtonRect);
   
-  if (CTX->Active == Id) {
+  if (CTX->Active.Id == Id.Id) {
     Clicked = true;
   }
 
-  GuiDrawButton(CTX, Id, ButtonRect);
+  //GuiDrawButton(CTX, Id, ButtonRect);
   return (Clicked);
 }
 

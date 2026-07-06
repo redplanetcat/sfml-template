@@ -3,7 +3,7 @@
 void DrawMenu(gui::context* CTX) {
   gui::GuiBegin(CTX);
 
-  gui::PanelBegin(CTX);
+  gui::PanelBegin(CTX, "Panel");
 
   gui::Text(CTX, "Menu");
   if (gui::Button(CTX, "Button")) {

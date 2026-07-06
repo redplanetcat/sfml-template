@@ -68,6 +68,30 @@ MakeQuad(vertex* V, f32 X, f32 Y, f32 Width, f32 Height, color C,
 
 }
 
+internal int
+CompareCommands(const void* A, const void* B) {
+  draw_command* CmdA = (draw_command*)A;
+  draw_command* CmdB = (draw_command*)B;
+  u32 DrawStateA = 0, DrawStateB = 0; // 0000 ZZZZ SSSS TTTT
+  DrawStateA |= (CmdA->Z << 16);
+  DrawStateA |= (CmdA->Shader.Handle << 8);
+  DrawStateA |= CmdA->Texture.Handle;
+  DrawStateB |= (CmdB->Z << 16);
+  DrawStateB |= (CmdB->Shader.Handle << 8);
+  DrawStateB |= CmdB->Texture.Handle;
+  return ((i32)DrawStateA - (i32)DrawStateB);
+}
+
+internal void
+PushVertices(vertex* VerticesDst, u32* DstNumVertices, u32 DstMaxVertices,
+             vertex* VerticesToPush, u32 NumVerticesToPush) {
+  u32 NumVerticesToCopy = MIN(DstMaxVertices - *DstNumVertices, NumVerticesToPush);
+  size_t BytesToCopy = (size_t)(NumVerticesToCopy * sizeof(VerticesToPush[0]));
+  vertex* VerticesPtr = &VerticesDst[*DstNumVertices];
+  memcpy((void*)VerticesPtr, (const void*)VerticesToPush, BytesToCopy);
+  *DstNumVertices += NumVerticesToCopy;
+}
+
 internal void
 FlushCommandStack(command_stack* CommandStack, platform_callbacks* Callbacks) {
   qsort(CommandStack->Buffer+1, 

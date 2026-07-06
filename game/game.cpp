@@ -109,15 +109,6 @@ SpawnStone(game_state* GameState) {
   Stone.Flags |= (u32)entity_flags::SpawnAnimated;
 }
 
-internal void
-PushVertices(vertex* VerticesDst, u32* DstNumVertices, u32 DstMaxVertices,
-             vertex* VerticesToPush, u32 NumVerticesToPush) {
-  u32 NumVerticesToCopy = MIN(DstMaxVertices - *DstNumVertices, NumVerticesToPush);
-  size_t BytesToCopy = (size_t)(NumVerticesToCopy * sizeof(VerticesToPush[0]));
-  vertex* VerticesPtr = &VerticesDst[*DstNumVertices];
-  memcpy((void*)VerticesPtr, (const void*)VerticesToPush, BytesToCopy);
-  *DstNumVertices += NumVerticesToCopy;
-}
 
 
 internal void
@@ -145,9 +136,10 @@ GameReset(game_state* GameState, platform_callbacks* Callbacks) {
 
 internal void 
 GameInit(game_state* GameState, platform_callbacks* Callbacks) {
-  gui::GuiInit(&GameState->GuiContext);
+  GameState->CommandStack.Buffer = GameState->_CommandBuffer;
+  GameState->CommandStack.NumCommands = 1;
 
-  GameState->CommandStack.Buffer = GameState->CommandBuffer;
+  gui::GuiInit(&GameState->GuiContext, &GameState->CommandStack);
 
   if (GameState->BackgroundShaderHandle.Handle == 0) {
     GameState->BackgroundShaderHandle = Callbacks->PlatformLoadShader("Resources/Shaders/background.vert", 
@@ -194,7 +186,6 @@ GameInit(game_state* GameState, platform_callbacks* Callbacks) {
     GameState->DeathSoundHandle = Callbacks->PlatformLoadSound("Resources/Sounds/Death.ogg");
     printf("Death sound handle: %u\n", GameState->DeathSoundHandle.Handle);
   }
-  GameState->NumDrawCommands = 1;
   GameReset(GameState, Callbacks);
 } 
 
@@ -219,19 +210,6 @@ DrawBackground(game_state* GameState, platform_callbacks* Callbacks) {
   Callbacks->PlatformUseShader(shader_id{});
 }
 
-internal int
-CompareCommands(const void* A, const void* B) {
-  draw_command* CmdA = (draw_command*)A;
-  draw_command* CmdB = (draw_command*)B;
-  u32 DrawStateA = 0, DrawStateB = 0; // 0000 ZZZZ SSSS TTTT
-  DrawStateA |= (CmdA->Z << 16);
-  DrawStateA |= (CmdA->Shader.Handle << 8);
-  DrawStateA |= CmdA->Texture.Handle;
-  DrawStateB |= (CmdB->Z << 16);
-  DrawStateB |= (CmdB->Shader.Handle << 8);
-  DrawStateB |= CmdB->Texture.Handle;
-  return ((i32)DrawStateA - (i32)DrawStateB);
-}
 
 internal void
 DrawText(game_state* GameState, platform_callbacks* Callbacks) {
@@ -400,7 +378,7 @@ UpdateEntityGraphics(game_state* GameState) {
       }
       Command.Rect = rect{ Position.x, Position.y,
                            ScaledSize.x, ScaledSize.y };
-      PushDrawCommand(&GameState.CommandStack, &Command);
+      PushDrawCommand(&GameState->CommandStack, &Command);
     }
   }
 }
@@ -476,7 +454,7 @@ GAME_RENDER(GameRender) {
   }
   game_state* GameState = (game_state*)Memory->PermanentStorage;
   DrawBackground(GameState, &Memory->PlatformCallbacks);
-  Menu(&GameState->GuiContext);
+  DrawMenu(&GameState->GuiContext);
   FlushCommandStack(&GameState->CommandStack, &Memory->PlatformCallbacks);
   DrawText(GameState, &Memory->PlatformCallbacks);
 }
