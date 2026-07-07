@@ -20,6 +20,13 @@ struct command_stack {
   u32 NumCommands;
 };
 
+void
+CommandStackInit(command_stack* CommandStack, void* Backbuffer, u32 BufferLength) {
+  CommandStack->BufferLength = BufferLength;
+  CommandStack->Buffer = (draw_command*)Backbuffer;
+  CommandStack->NumCommands = 1;
+}
+
 inline void
 PushDrawCommand(command_stack* CommandStack, draw_command* Command) {
   draw_command* DestCommand = (CommandStack->NumCommands < CommandStack->BufferLength

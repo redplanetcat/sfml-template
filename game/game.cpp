@@ -136,8 +136,9 @@ GameReset(game_state* GameState, platform_callbacks* Callbacks) {
 
 internal void 
 GameInit(game_state* GameState, platform_callbacks* Callbacks) {
-  GameState->CommandStack.Buffer = GameState->_CommandBuffer;
-  GameState->CommandStack.NumCommands = 1;
+  CommandStackInit(&GameState->CommandStack, 
+                   (void*)GameState->_CommandBuffer, 
+                   MAX_DRAW_COMMANDS);
 
   gui::GuiInit(&GameState->GuiContext, &GameState->CommandStack);
 
