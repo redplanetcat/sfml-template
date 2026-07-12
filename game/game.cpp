@@ -9,6 +9,8 @@
 namespace apples_game {
 
 struct game_state {
+  Arena PermArena;
+  Arena ScratchArena;
   gui::context GuiContext;
   entity_manager Entities;
   entity_ref PlayerRef;
@@ -109,8 +111,6 @@ SpawnStone(game_state* GameState) {
   Stone.Flags |= (u32)entity_flags::SpawnAnimated;
 }
 
-
-
 internal void
 UpdateScore(game_state* GameState, platform_callbacks* Callbacks, u32 Score) {
   GameState->Score = Score;
@@ -134,13 +134,23 @@ GameReset(game_state* GameState, platform_callbacks* Callbacks) {
   SpawnApple(GameState);
 }
 
-internal void 
-GameInit(game_state* GameState, platform_callbacks* Callbacks) {
-  CommandStackInit(&GameState->CommandStack, 
-                   (void*)GameState->_CommandBuffer, 
+internal void
+GameInit(game_state* GameState, game_memory* Memory) {
+  u64 PermanentArenaSize = Memory->PermanentStorageSize - sizeof(game_state);
+  void* PermanentArenaMemory = (void*)((u8*)Memory->PermanentStorage +
+                                       sizeof(game_state));
+  arena_init(GameState->PermArena, PermanentArenaMemory, PermanentArenaSize);
+  scratch_arena_init(GameState->ScratchArena,
+                     Memory->TemporaryStorage,
+                     Memory->TemporaryStorageSize);
+
+  CommandStackInit(&GameState->CommandStack,
+                   (void*)GameState->_CommandBuffer,
                    MAX_DRAW_COMMANDS);
 
   gui::GuiInit(&GameState->GuiContext, &GameState->CommandStack);
+
+  platform_callbacks* Callbacks = &Memory->PlatformCallbacks;
 
   if (GameState->BackgroundShaderHandle.Handle == 0) {
     GameState->BackgroundShaderHandle = Callbacks->PlatformLoadShader("Resources/Shaders/background.vert", 
@@ -429,7 +439,7 @@ GAME_UPDATE(GameUpdate) {
   game_state* GameState = (game_state*)Memory->PermanentStorage;
   if (!GameState->IsInitialized) {
     printf("GameState is uninitialized, calling init function.\n");
-    GameInit(GameState, &Memory->PlatformCallbacks);
+    GameInit(GameState, Memory);
     GameState->IsInitialized = true;
   }
 

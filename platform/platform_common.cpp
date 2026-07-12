@@ -41,6 +41,10 @@ PLATFORM_DRAW_VERTICES(PlatformDrawVertices) {
   GetPlatformState().Window.draw(reinterpret_cast<sf::Vertex*>(Vertices), NumVertices, PlatformPrimitiveType, GetPlatformState().RenderStates);
 }
 
+PLATFORM_LOAD_TEXTURE_FROM_MEMORY(PlatformLoadTextureFromMemory) {
+
+}
+
 PLATFORM_USE_TEXTURE(PlatformUseTexture) {
   if (TextureHandle.Handle == 0) {
     GetPlatformState().RenderStates.texture = nullptr;
@@ -151,6 +155,7 @@ AssignPlatformCallbacks(game_memory* Memory) {
   Memory->PlatformCallbacks.PlatformDrawVertices = PlatformDrawVertices;
 
   Memory->PlatformCallbacks.PlatformLoadTexture = PlatformLoadTexture;
+  Memory->PlatformCallbacks.PlatformLoadTextureFromMemory = PlatformLoadTextureFromMemory;
   Memory->PlatformCallbacks.PlatformUseTexture = PlatformUseTexture;
 
   Memory->PlatformCallbacks.PlatformLoadShader = PlatformLoadShader;

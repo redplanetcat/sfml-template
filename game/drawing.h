@@ -86,7 +86,7 @@ CompareCommands(const void* A, const void* B) {
   DrawStateB |= (CmdB->Z << 16);
   DrawStateB |= (CmdB->Shader.Handle << 8);
   DrawStateB |= CmdB->Texture.Handle;
-  return ((i32)DrawStateA - (i32)DrawStateB);
+  return ((i32)DrawStateB - (i32)DrawStateA);
 }
 
 internal void

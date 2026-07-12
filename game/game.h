@@ -5,6 +5,8 @@
 #include <cmath>
 #include "../common/defines.h"
 #include "../common/types.h"
+#include "../common/arena_allocator.h"
+#include "../common/allocator.h"
 #include "../common/linalg.h"
 #include "../common/graphics.h"
 #include "../common/input.h"
@@ -20,10 +22,16 @@ typedef PLATFORM_DRAW_VERTICES(platform_draw_vertices_t);
 #define PLATFORM_LOAD_TEXTURE(name) texture_id name(const char* TexturePath)
 typedef PLATFORM_LOAD_TEXTURE(platform_load_texture_t);
 
+#define PLATFORM_LOAD_TEXTURE_FROM_MEMORY(name) texture_id name(void* TextureData, \
+                                                                u32 Width, \
+                                                                u32 Height)
+typedef PLATFORM_LOAD_TEXTURE_FROM_MEMORY(platform_load_texture_from_memory_t);
+
 #define PLATFORM_USE_TEXTURE(name) void name(texture_id TextureHandle)
 typedef PLATFORM_USE_TEXTURE(platform_use_texture_t);
 
-#define PLATFORM_LOAD_SHADER(name) shader_id name(const char* VertPath, const char* FragPath)
+#define PLATFORM_LOAD_SHADER(name) shader_id name(const char* VertPath, \
+                                                  const char* FragPath)
 typedef PLATFORM_LOAD_SHADER(platform_load_shader_t);
 
 #define PLATFORM_USE_SHADER(name) void name(shader_id ShaderHandle)
@@ -58,6 +66,7 @@ struct platform_callbacks {
   platform_draw_vertices_t* PlatformDrawVertices;
 
   platform_load_texture_t* PlatformLoadTexture;
+  platform_load_texture_from_memory_t* PlatformLoadTextureFromMemory;
   platform_use_texture_t* PlatformUseTexture;
 
   platform_load_shader_t* PlatformLoadShader;

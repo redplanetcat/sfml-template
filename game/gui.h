@@ -1,5 +1,7 @@
 #ifndef GUI_H
 
+#include "font.h"
+
 #define MAX_GUI_CONTAINERS 2048
 #define MAX_GUI_IDS 2048
 
@@ -15,15 +17,28 @@ enum class layout: u32 {
 };
 
 enum class container_flags: u32 {
-  Visible,
-  Expand,
+  Hidden,
+  FitContent,
+};
+
+struct style {
+  color BaseColor;
+  color HotColor;
+  color ActiveColor;
+};
+
+global const style DefaultStyle = {
+  {100, 100, 100, 255},
+  {100, 200, 100, 255},
+  {200, 100, 100, 255}
 };
 
 struct container {
   rect Rect;
   f32 Margin[4];
-  i32 ZIndex;
+  u32 Z;
   u32 Flags;
+  style Style;
   layout Layout;
 };
 
@@ -58,10 +73,6 @@ GuiInit(context* CTX, command_stack* CommandStack) {
   CTX->CommandStack = CommandStack;
 }
 
-internal void
-GuiBegin(context* CTX) {
-
-}
 
 internal void
 GuiUpdateInputState(context* CTX, game_input* Input) {
@@ -110,8 +121,25 @@ GuiPopContainer(context* CTX) {
   CTX->NumContainers--;
 }
 
+internal container
+CreateChildContainer(context* CTX, container* Parent) {
+  container Container = {};
+  Container.Rect = {
+    Parent->Rect.x + Parent->Margin[3],
+    Parent->Rect.y + Parent->Margin[0],
+    Parent->Rect.w - (Parent->Margin[1] + Parent->Margin[3]),
+    Parent->Rect.h - (Parent->Margin[0] + Parent->Margin[2])
+  };
+  memset(Container.Margin, 0, sizeof(Container.Margin));
+  Container.Z = Parent->Z + 1;
+  Container.Flags = Parent->Flags;
+  Container.Style = Parent->Style;
+  Container.Layout = Parent->Layout;
+  return (Container);
+}
+
 internal void
-GuiDrawPanel(context* CTX, element_id Id, rect PanelRect) {
+GuiDrawPanel(context* CTX, container* Container) {
   draw_command Command = { };
   //Command.Texture = E.Texture;
   //Command.Shader = E.Shader;
@@ -123,14 +151,34 @@ GuiDrawPanel(context* CTX, element_id Id, rect PanelRect) {
   //if (E.Flags & (u32)entity_flags::Flip) {
   //  Command.Flags |= (u32)draw_command_flags::Flip;
   //}
-  //Command.Rect = rect{ Position.x, Position.y,
-  //                     ScaledSize.x, ScaledSize.y };
+  Command.Color = Container->Style.BaseColor;
+  Command.Rect = Container->Rect;
+  Command.Z = Container->Z;
   PushDrawCommand(CTX->CommandStack, &Command);
 
 }
 
 internal void
 GuiDrawButton(context* CTX, element_id Id, rect ButtonRect) {
+
+}
+
+internal void
+GuiBegin(context* CTX) {
+  CTX->NumIDs = 1;
+  CTX->NumContainers = 1;
+
+  container Container = {};
+  Container.Rect = {
+    0, 0,
+    WINDOW_WIDTH, WINDOW_HEIGHT
+  };
+  memset(Container.Margin, 0, sizeof(Container.Margin));
+  Container.Z = CTX->ZBase;
+  Container.Flags = 0;
+  Container.Style = DefaultStyle;
+  Container.Layout = layout::Vertical;
+  GuiPushContainer(CTX, &Container);
 
 }
 
@@ -142,11 +190,16 @@ GuiEnd(context* CTX) {
 internal void
 PanelBegin(context* CTX, const char* Name) {
   GuiPushId(CTX, (const void*) Name, (u32)strlen(Name));
-
+  container Container = CreateChildContainer(CTX, 
+                                          &CTX->Containers[CTX->NumContainers - 1]);
+  Container.Rect = {200, 200, 200, 200};
+  GuiPushContainer(CTX, &Container);
+  GuiDrawPanel(CTX, &Container);
 }
 
 internal void
 PanelEnd(context* CTX) {
+  GuiPopContainer(CTX);
   GuiPopId(CTX);
 }
 
