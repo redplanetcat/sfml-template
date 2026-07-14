@@ -6,7 +6,6 @@
 #include "../common/defines.h"
 #include "../common/types.h"
 #include "../common/arena_allocator.h"
-#include "../common/allocator.h"
 #include "../common/linalg.h"
 #include "../common/graphics.h"
 #include "../common/input.h"

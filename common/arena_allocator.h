@@ -4,168 +4,129 @@
     #define DEFAULT_ALIGNMENT (2 * sizeof(void*))
 #endif
 
-typedef struct Arena {
-    unsigned char*  buf;
-    size_t          buf_len;
-    size_t          prev_offset;
-    size_t          curr_offset;
-} Arena;
+static inline bool IsPowerOfTwo(uintptr_t X) {
+    return (X & (X - 1)) == 0;
+}
+
+struct arena {
+    unsigned char*  Buf;
+    size_t          BufLen;
+    size_t          PrevOffset;
+    size_t          CurrOffset;
+};
 
 uintptr_t
-align_forward(uintptr_t ptr, size_t align) {
-    uintptr_t p, a, modulo;
+AlignForward(uintptr_t Ptr, size_t Align) {
+    uintptr_t P, A, Modulo;
 
-    p = ptr;
-    a = (uintptr_t)align;
-    modulo = p & (a - 1);
+    P = Ptr;
+    A = (uintptr_t)Align;
+    Modulo = P & (A - 1);
 
-    if (modulo != 0) {
-        p += a - modulo;
+    if (Modulo != 0) {
+        P += A - Modulo;
     }
-    return p;
+    return P;
 }
 
 internal inline void
-arena_init(Arena* a, void* backing_buffer, size_t backing_buffer_length) {
-    a->buf = (unsigned char*)backing_buffer;
-    a->buf_len = backing_buffer_length;
-    a->curr_offset = 0;
-    a->prev_offset = 0;
+ArenaInit(arena* A, void* BackingBuffer, size_t BackingBufferLength) {
+    A->Buf = (unsigned char*)BackingBuffer;
+    A->BufLen = BackingBufferLength;
+    A->CurrOffset = 0;
+    A->PrevOffset = 0;
 }
 
 void*
-arena_alloc_align(Arena* a, size_t size, size_t align) {
-    uintptr_t curr_ptr = (uintptr_t)a->buf + (uintptr_t)a->curr_offset;
-    uintptr_t offset = align_forward(curr_ptr, align);
-    offset -= (uintptr_t)a->buf;
+ArenaAllocAlign(arena* A, size_t Size, size_t Align) {
+    uintptr_t CurrPtr = (uintptr_t)A->Buf + (uintptr_t)A->CurrOffset;
+    uintptr_t Offset = AlignForward(CurrPtr, Align);
+    Offset -= (uintptr_t)A->Buf;
 
-    if ((offset + size) <= a->buf_len) {
-        void* ptr = &a->buf[offset];
-        a->prev_offset = offset;
-        a->curr_offset = offset + size;
+    if ((Offset + Size) <= A->BufLen) {
+        void* Ptr = &A->Buf[Offset];
+        A->PrevOffset = Offset;
+        A->CurrOffset = Offset + Size;
 
-        SDL_memset(ptr, 0, size);
-        return ptr;
+        memset(Ptr, 0, Size);
+        return (Ptr);
     }
 
     Assert(0 && "Memory is out of bounds of the buffer in this arena");
-    return NULL;
+    return (NULL);
 }
 
 internal inline void*
-arena_alloc(Arena* a, size_t size) {
-    return arena_alloc_align(a, size, DEFAULT_ALIGNMENT);
+ArenaAlloc(arena* A, size_t Size) {
+    return (ArenaAllocAlign(A, Size, DEFAULT_ALIGNMENT));
 }
 
 void*
-arena_resize_align(Arena* a, void* old_memory, size_t old_size, size_t new_size, size_t align) {
-    unsigned char* old_mem = (unsigned char*) old_memory;
-    assert(is_power_of_two(align));
+ArenaResizeAlign(arena* A, void* OldMemory, size_t OldSize, size_t NewSize, size_t Align) {
+    unsigned char* OldMem = (unsigned char*) OldMemory;
+    Assert(IsPowerOfTwo(Align));
 
-    if (old_mem == NULL || old_size == 0) {
-        return arena_alloc_align(a, new_size, align);
-    } else if ((a->buf <= old_mem) && (old_mem < (a->buf + a->buf_len))) {
-        if ((a->buf + a->prev_offset) == old_mem) {
-            a->curr_offset = a->prev_offset + new_size;
-            if (new_size > old_size) {
-                SDL_memset(&a->buf[a->curr_offset], 0, new_size - old_size);
+    if (OldMem == NULL || OldSize == 0) {
+        return ArenaAllocAlign(A, NewSize, Align);
+    } else if ((A->Buf <= OldMem) && (OldMem < (A->Buf + A->BufLen))) {
+        if ((A->Buf + A->PrevOffset) == OldMem) {
+            A->CurrOffset = A->PrevOffset + NewSize;
+            if (NewSize > OldSize) {
+                memset(&A->Buf[A->CurrOffset], 0, NewSize - OldSize);
             }
-            return old_memory;
+            return (OldMemory);
         } else {
-            void* new_memory = arena_alloc_align(a, new_size, align);
-            size_t copy_size = old_size < new_size ? old_size : new_size;
-            SDL_memmove(new_memory, old_memory, copy_size);
-            return new_memory;
+            void* NewMemory = ArenaAllocAlign(A, NewSize, Align);
+            size_t CopySize = OldSize < NewSize ? OldSize : NewSize;
+            memmove(NewMemory, OldMemory, CopySize);
+            return (NewMemory);
         }
     } else {
-        assert(0 && "Memory is out of bounds of the buffer in this arena");
-        return NULL;
+        Assert(0 && "Memory is out of bounds of the buffer in this arena");
+        return (NULL);
     }
 }
 
 internal inline void*
-arena_resize(Arena* a, void* old_memory, size_t old_size, size_t new_size) {
-    return arena_resize_align(a, old_memory, old_size, new_size, DEFAULT_ALIGNMENT);
+ArenaResize(arena* A, void* OldMemory, size_t OldSize, size_t NewSize) {
+    return ArenaResizeAlign(A, OldMemory, OldSize, NewSize, DEFAULT_ALIGNMENT);
 }
 
 internal inline void*
-arena_realloc_align(Arena* a, void* ptr, size_t size, size_t align) {
-    return arena_resize_align(a, ptr, size, size, align);
+ArenaReallocAlign(arena* A, void* Ptr, size_t Size, size_t Align) {
+    return ArenaResizeAlign(A, Ptr, Size, Size, Align);
 }
 
 internal inline void*
-arena_realloc(Arena* a, void* ptr, size_t size) {
-    return arena_realloc_align(a, ptr, size, DEFAULT_ALIGNMENT);
+ArenaRealloc(arena* A, void* Ptr, size_t Size) {
+    return ArenaReallocAlign(A, Ptr, Size, DEFAULT_ALIGNMENT);
 }
 
 internal inline void
-arena_free_all(Arena* a) {
-    a->curr_offset = 0;
-    a->prev_offset = 0;
+ArenaFreeAll(arena* A) {
+    A->CurrOffset = 0;
+    A->PrevOffset = 0;
 }
 
-typedef struct Temp_Arena_Memory {
-    Arena* arena;
-    size_t prev_offset;
-    size_t curr_offset;
-} Temp_Arena_Memory;
+struct temp_arena_memory {
+    arena* Arena;
+    size_t PrevOffset;
+    size_t CurrOffset;
+};
 
-internal inline Temp_Arena_Memory
-temp_arena_memory_begin(Arena* a) {
-    Temp_Arena_Memory temp;
-    temp.arena = a;
-    temp.prev_offset = a->prev_offset;
-    temp.curr_offset = a->curr_offset;
-    return temp;
+internal inline temp_arena_memory
+TempArenaMemoryBegin(arena* A) {
+    temp_arena_memory Temp;
+    Temp.Arena = A;
+    Temp.PrevOffset = A->PrevOffset;
+    Temp.CurrOffset = A->CurrOffset;
+    return (Temp);
 }
 
 internal inline void
-temp_arena_memory_end(Temp_Arena_Memory temp) {
-    temp.arena->prev_offset = temp.prev_offset;
-    temp.arena->curr_offset = temp.curr_offset;
-}
-
-typedef struct ScratchArena {
-    Arena arena;
-    size_t numAllocations;
-} ScratchArena;
-
-internal inline void
-scratch_arena_init(ScratchArena* scratchArena, void* backing_buffer, size_t backing_buffer_length) {
-    arena_init(&scratchArena->arena, backing_buffer, backing_buffer_length);
-    scratchArena->numAllocations = 0;
-}
-
-void*
-scratch_arena_alloc(ScratchArena* arena, size_t size) {
-    void* result = arena_alloc(&arena->arena, size);
-    if (result != NULL) {
-        arena->numAllocations++;
-    }
-    return result;
-}
-
-void
-scratch_arena_free(ScratchArena* arena, void* ptr) {
-    arena->numAllocations--;
-    if (arena->numAllocations == 0) {
-        arena_free_all(&arena->arena);
-    }
-}
-
-void
-scratch_arena_flush(ScratchArena* arena) {
-    arena->numAllocations = 0;
-    arena_free_all(&arena->arena);
-}
-
-void*
-scratch_arena_realloc(ScratchArena* arena, void* ptr, size_t size) {
-    void* result = arena_realloc(&arena->arena, ptr, size);
-    if ((result != NULL) && (result != ptr)) {
-        arena->numAllocations++;
-    }
-    return result;
+TempArenaMemoryEnd(temp_arena_memory Temp) {
+    Temp.Arena->PrevOffset = Temp.PrevOffset;
+    Temp.Arena->CurrOffset = Temp.CurrOffset;
 }
 
 #define ARENA_ALLOCATOR_H

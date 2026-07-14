@@ -1,7 +1,5 @@
 #ifndef GUI_H
 
-#include "font.h"
-
 #define MAX_GUI_CONTAINERS 2048
 #define MAX_GUI_IDS 2048
 

@@ -1,12 +1,10 @@
 #ifndef FONT_H
 
-#include "default_font.h"
-
 struct font_glyph {
-  u32 X;
-  u32 Y;
-  u32 Width;
-  u32 Height;
+  i32 X;
+  i32 Y;
+  i32 Width;
+  i32 Height;
   i32 XOffset;
   i32 YOffset;
   i32 XAdvance;
@@ -19,12 +17,12 @@ struct font_data {
 };
 
 internal font_data
-LoadDefaultFont(Arena* PermArena, platform_callbacks* Callbacks) {
+LoadDefaultFont(arena* PermArena, platform_callbacks* Callbacks) {
   font_data FontData;
-  u32 AtlasLen = ArrayLength(DefaultAtlas);
-  FontData.Atlas = arena_alloc(PermArena, sizeof(font_glyph) * AtlasLen);
+  u32 AtlasLen = ArrayCount(DefaultAtlas);
+  FontData.Atlas = (font_glyph*)ArenaAlloc(PermArena, sizeof(font_glyph) * AtlasLen);
   FontData.Texture = Callbacks->PlatformLoadTextureFromMemory(
-                                                DefaultAtlasTextureData, 
+                                                (void*)DefaultAtlasTextureData, 
                                                 DEFAULT_ATLAS_WIDTH, 
                                                 DEFAULT_ATLAS_HEIGHT);
 

@@ -70,6 +70,7 @@ set WARNING_LINK_FLAGS=%WARNING_LINK_FLAGS% -wd4201 &:: Ignore nameless struct/u
 set WARNING_LINK_FLAGS=%WARNING_LINK_FLAGS% -wd4100 &:: Ignore unused function parameter
 set WARNING_LINK_FLAGS=%WARNING_LINK_FLAGS% -wd4189 &:: Ignore local variable not referenced
 set WARNING_LINK_FLAGS=%WARNING_LINK_FLAGS% -wd4805 &:: Ignore bool operation warnings
+set WARNING_LINK_FLAGS=%WARNING_LINK_FLAGS% -wd4127 &:: Ignore assertion conditionals warnings
 
 :: COMMON LINKER SWITCHES
 set WIN32_LINK=             -opt:ref              &:: Remove unused functions

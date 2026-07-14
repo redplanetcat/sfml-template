@@ -1,6 +1,8 @@
 #include "game.h"
 #include "entities.h"
 #include "drawing.h"
+#include "default_font.h"
+#include "font.h"
 #include "gui.h"
 #include "menu.h"
 #include <cstddef>
@@ -9,8 +11,8 @@
 namespace apples_game {
 
 struct game_state {
-  Arena PermArena;
-  Arena ScratchArena;
+  arena PermArena;
+  arena ScratchArena;
   gui::context GuiContext;
   entity_manager Entities;
   entity_ref PlayerRef;
@@ -139,10 +141,12 @@ GameInit(game_state* GameState, game_memory* Memory) {
   u64 PermanentArenaSize = Memory->PermanentStorageSize - sizeof(game_state);
   void* PermanentArenaMemory = (void*)((u8*)Memory->PermanentStorage +
                                        sizeof(game_state));
-  arena_init(GameState->PermArena, PermanentArenaMemory, PermanentArenaSize);
-  scratch_arena_init(GameState->ScratchArena,
-                     Memory->TemporaryStorage,
-                     Memory->TemporaryStorageSize);
+  ArenaInit(&GameState->PermArena, 
+             PermanentArenaMemory, 
+             PermanentArenaSize);
+  ArenaInit(&GameState->ScratchArena,
+             Memory->ScratchStorage,
+             Memory->ScratchStorageSize);
 
   CommandStackInit(&GameState->CommandStack,
                    (void*)GameState->_CommandBuffer,
@@ -443,6 +447,8 @@ GAME_UPDATE(GameUpdate) {
     GameState->IsInitialized = true;
   }
 
+  ArenaFreeAll(&GameState->ScratchArena);
+
   GuiUpdateInputState(&GameState->GuiContext, Input);
 
   UpdateTimers(GameState, &Memory->PlatformCallbacks, Delta);
@@ -466,6 +472,8 @@ GAME_RENDER(GameRender) {
   game_state* GameState = (game_state*)Memory->PermanentStorage;
   DrawBackground(GameState, &Memory->PlatformCallbacks);
   DrawMenu(&GameState->GuiContext);
-  FlushCommandStack(&GameState->CommandStack, &Memory->PlatformCallbacks);
+  FlushCommandStack(&GameState->CommandStack, 
+                    &Memory->PlatformCallbacks, 
+                    &GameState->ScratchArena);
   DrawText(GameState, &Memory->PlatformCallbacks);
 }
