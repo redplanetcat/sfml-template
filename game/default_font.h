@@ -4,6 +4,7 @@ constexpr u32 DEFAULT_ATLAS_WHITE = 0;
 constexpr u32 DEFAULT_ATLAS_FONT = DEFAULT_ATLAS_WHITE+1;
 constexpr u32 DEFAULT_ATLAS_WIDTH = 128;
 constexpr u32 DEFAULT_ATLAS_HEIGHT = 128;
+constexpr u32 DEFAULT_ATLAS_BPP = 1;
 constexpr u32 DEFAULT_ATLAS_CHAR_HEIGHT = 18;
 
 static const u8 DefaultAtlasTextureData[] = {

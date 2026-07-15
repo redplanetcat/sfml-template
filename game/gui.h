@@ -1,5 +1,7 @@
 #ifndef GUI_H
 
+#include "../common/hash.h"
+
 #define MAX_GUI_CONTAINERS 2048
 #define MAX_GUI_IDS 2048
 
@@ -59,16 +61,23 @@ struct context {
   b32 MiddleMousePressed;
 
   /* Drawing */
+  font_data FontData;
   command_stack* CommandStack;
   u32 ZBase;
 };
 
 internal void
-GuiInit(context* CTX, command_stack* CommandStack) {
+GuiInit(context* CTX, 
+        command_stack* CommandStack, 
+        arena* PermArena, 
+        arena* ScratchArena,
+        platform_callbacks* Callbacks) 
+{
   CTX->NumIDs = 1;
   CTX->NumContainers = 1;
   CTX->ZBase = UINT32_MAX / 2;
   CTX->CommandStack = CommandStack;
+  CTX->FontData = LoadDefaultFont(PermArena, ScratchArena, Callbacks);
 }
 
 
@@ -80,7 +89,7 @@ GuiUpdateInputState(context* CTX, game_input* Input) {
 }
 
 internal void
-GuiUpdateElementInput(context* CTX, element_id Id, rect Rect) {
+GuiUpdateElementInput(context* CTX, element_id Id) {
 
 }
 
@@ -150,15 +159,23 @@ GuiDrawPanel(context* CTX, container* Container) {
   //  Command.Flags |= (u32)draw_command_flags::Flip;
   //}
   Command.Color = Container->Style.BaseColor;
-  Command.Rect = Container->Rect;
+  Command.DstRect = Container->Rect;
   Command.Z = Container->Z;
   PushDrawCommand(CTX->CommandStack, &Command);
 
 }
 
 internal void
-GuiDrawButton(context* CTX, element_id Id, rect ButtonRect) {
-
+GuiDrawButton(context* CTX, element_id Id) {
+  color Color = {255, 255, 255, 255};
+  vec2 Pos = {16.f, 32.f};
+  DrawText("Button",
+           (u32)strlen("Button"),
+           &CTX->FontData, 
+           Pos, 
+           Color, 
+           CTX->ZBase+1,
+           CTX->CommandStack); 
 }
 
 internal void
@@ -216,13 +233,13 @@ Button(context* CTX, const char* Text) {
   b32 Clicked = false;
   element_id Id = GuiGetId(CTX, (const void*)Text, (u32)strlen(Text));
 
-  //GuiUpdateElementInput(CTX, Id, ButtonRect);
+  GuiUpdateElementInput(CTX, Id);
   
   if (CTX->Active.Id == Id.Id) {
     Clicked = true;
   }
 
-  //GuiDrawButton(CTX, Id, ButtonRect);
+  GuiDrawButton(CTX, Id);
   return (Clicked);
 }
 

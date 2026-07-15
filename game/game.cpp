@@ -1,8 +1,8 @@
 #include "game.h"
 #include "entities.h"
-#include "drawing.h"
 #include "default_font.h"
 #include "font.h"
+#include "drawing.h"
 #include "gui.h"
 #include "menu.h"
 #include <cstddef>
@@ -151,10 +151,14 @@ GameInit(game_state* GameState, game_memory* Memory) {
   CommandStackInit(&GameState->CommandStack,
                    (void*)GameState->_CommandBuffer,
                    MAX_DRAW_COMMANDS);
-
-  gui::GuiInit(&GameState->GuiContext, &GameState->CommandStack);
-
+  
   platform_callbacks* Callbacks = &Memory->PlatformCallbacks;
+
+  gui::GuiInit(&GameState->GuiContext, 
+               &GameState->CommandStack, 
+               &GameState->PermArena, 
+               &GameState->ScratchArena,
+               Callbacks);
 
   if (GameState->BackgroundShaderHandle.Handle == 0) {
     GameState->BackgroundShaderHandle = Callbacks->PlatformLoadShader("Resources/Shaders/background.vert", 
@@ -213,7 +217,7 @@ DrawBackground(game_state* GameState, platform_callbacks* Callbacks) {
   }
   vertex ScreenQuad[6];
   MakeQuad(ScreenQuad, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 
-          {255, 255, 255, 255}, 0.f, 0.f, 0.f, false);
+          {255, 255, 255, 255}, 0.f, 0.f, 0.f, 0.f, 0.f, false);
   Callbacks->PlatformUseShader(GameState->BackgroundShaderHandle);
   Callbacks->PlatformSetShaderUniformVec2(GameState->BackgroundShaderHandle,
                                           "u_resolution",
@@ -391,8 +395,10 @@ UpdateEntityGraphics(game_state* GameState) {
       if (E.Flags & (u32)entity_flags::Flip) {
         Command.Flags |= (u32)draw_command_flags::Flip;
       }
-      Command.Rect = rect{ Position.x, Position.y,
+      Command.DstRect = rect{ Position.x, Position.y,
                            ScaledSize.x, ScaledSize.y };
+      Command.SrcRect = rect{ 0.f, 0.f,
+                              E.Texture.Width, E.Texture.Height };
       PushDrawCommand(&GameState->CommandStack, &Command);
     }
   }

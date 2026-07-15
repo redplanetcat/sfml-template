@@ -10,7 +10,8 @@ struct draw_command {
   u32 Z;
   color Color;
   f32 Rotation;
-  rect Rect;
+  rect SrcRect;
+  rect DstRect;
   u32 Flags;
 };
 
@@ -61,17 +62,41 @@ RotateQuad(vertex* V, vec2 Center, f32 Rotation) {
 
 internal void 
 MakeQuad(vertex* V, f32 X, f32 Y, f32 Width, f32 Height, color C,
-         f32 TexWidth, f32 TexHeight, f32 Rotation, b32 Flip) 
+         f32 TexX, f32 TexY, f32 TexWidth, f32 TexHeight, f32 Rotation, b32 Flip) 
 {
   f32 FlipWidth = (Flip ? TexWidth : 0.f);
-  V[0] = {{X, Y}, { C.r, C.g, C.b, C.a }, {0.f + FlipWidth, 0.f}};
-  V[1] = {{X+Width, Y}, { C.r, C.g, C.b, C.a }, {TexWidth - FlipWidth, 0.f}};
-  V[2] = {{X+Width, Y+Height}, { C.r, C.g, C.b, C.a }, {TexWidth - FlipWidth, TexHeight}};
-  V[3] = {{X, Y}, { C.r, C.g, C.b, C.a }, {0.f + FlipWidth, 0.f}};
-  V[4] = {{X, Y+Height}, { C.r, C.g, C.b, C.a }, {0.f + FlipWidth, TexHeight}};
-  V[5] = {{X+Width, Y+Height}, { C.r, C.g, C.b, C.a }, {TexWidth - FlipWidth, TexHeight}};
+  V[0] = {
+    { X, Y }, 
+    { C.r, C.g, C.b, C.a }, 
+    { TexX + FlipWidth, TexY }
+  };
+  V[1] = {
+    { X + Width, Y }, 
+    { C.r, C.g, C.b, C.a }, 
+    { TexX + TexWidth - FlipWidth, TexY }
+  };
+  V[2] = {
+    { X + Width, Y + Height }, 
+    { C.r, C.g, C.b, C.a }, 
+    { TexX + TexWidth - FlipWidth, TexY + TexHeight }
+  };
+  V[3] = {
+    { X, Y }, 
+    { C.r, C.g, C.b, C.a }, 
+    { TexX + FlipWidth, TexY }
+  };
+  V[4] = {
+    { X, Y + Height }, 
+    { C.r, C.g, C.b, C.a }, 
+    { TexX + FlipWidth, TexY + TexHeight }
+  };
+  V[5] = {
+    { X + Width, Y + Height }, 
+    { C.r, C.g, C.b, C.a }, 
+    { TexX + TexWidth - FlipWidth, TexY + TexHeight }
+  };
 
-  RotateQuad(V, vec2{X + Width/2.f, Y + Height/2.f}, Rotation);
+  RotateQuad(V, vec2{ X + Width/2.f, Y + Height/2.f }, Rotation);
 
 }
 
@@ -130,9 +155,12 @@ FlushCommandStack(command_stack* CommandStack,
     }
 
     vertex Quad[6];
-    MakeQuad(Quad, Command->Rect.x, Command->Rect.y,
-             Command->Rect.w, Command->Rect.h, Command->Color,
-             Texture.Width, Texture.Height, Command->Rotation, 
+    //MakeQuad(vertex* V, f32 X, f32 Y, f32 Width, f32 Height, color C,
+    //     f32 TexX, f32 TexY, f32 TexWidth, f32 TexHeight, f32 Rotation, b32 Flip) 
+    MakeQuad(Quad, Command->DstRect.x, Command->DstRect.y,
+             Command->DstRect.w, Command->DstRect.h, Command->Color,
+             Command->SrcRect.x, Command->SrcRect.y,
+             Command->SrcRect.w, Command->SrcRect.h, Command->Rotation, 
              (Command->Flags & (u32)draw_command_flags::Flip));
     PushVertices(VertexBuffer, &NumVertices, MAX_DRAW_COMMANDS * 6, Quad, 6);
   }
@@ -146,6 +174,45 @@ FlushCommandStack(command_stack* CommandStack,
   }
 
   CommandStack->NumCommands = 1;
+}
+
+void
+DrawText(const char* Text, 
+         u32 Length,
+         font_data* FontData, 
+         vec2 Pos, 
+         color Color, 
+         i32 Z,
+         command_stack* CommandStack) 
+{
+  draw_command Command = { };
+  Command.Texture = FontData->Texture;
+  Command.Z = Z;
+  Command.Color = Color;
+  Command.DstRect = rect{
+    Pos.x, Pos.y, 16.f, (f32)FontData->CharHeight
+  };
+
+  for (u32 I = 0; I < Length; ++I) {
+    u8 Byte = Text[I];
+    if ((Byte & 0xc0) == 0x80) continue;
+    u8 Char = MIN(Byte, 127);
+    font_glyph Glyph = FontData->Atlas[u32(Char)];
+    Command.SrcRect = rect{
+      (f32)Glyph.X, (f32)Glyph.Y,
+      (f32)Glyph.Width, (f32)Glyph.Height
+    };
+    Command.DstRect = rect{
+      Command.DstRect.x + (f32)Glyph.XOffset,
+      Command.DstRect.y + (f32)Glyph.YOffset,
+      (f32)Glyph.Width,
+      (f32)Glyph.Height
+    };
+    PushDrawCommand(CommandStack, &Command);
+    Command.DstRect.y -= (f32)Glyph.YOffset;
+    Command.DstRect.x -= (f32)Glyph.XOffset;
+    Command.DstRect.x += (f32)Glyph.XAdvance;
+  }
 }
 
 #define DRAWING_H

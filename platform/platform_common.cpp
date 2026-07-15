@@ -42,7 +42,32 @@ PLATFORM_DRAW_VERTICES(PlatformDrawVertices) {
 }
 
 PLATFORM_LOAD_TEXTURE_FROM_MEMORY(PlatformLoadTextureFromMemory) {
+  sf::Image Image;
+  u8* ImageData = (u8*)TextureData;
+  if (BPP < 4) {
+    ImageData = (u8*)ArenaAlloc(ScratchArena, Width * Height * 4);
+    u8* TexData = (u8*)TextureData;
+    for (u32 I = 0; I < Width * Height; ++I) {
+      ImageData[I * 4 + 0] = TexData[I * BPP];
+      ImageData[I * 4 + 1] = (BPP > 1 ? TexData[I * BPP + 1] : TexData[I * BPP]);
+      ImageData[I * 4 + 2] = (BPP > 2 ? TexData[I * BPP + 2] : TexData[I * BPP]);
+      ImageData[I * 4 + 3] = (BPP > 3 ? TexData[I * BPP + 3] : TexData[I * BPP]);
+    }
+  }
+  Image.create(Width, Height, ImageData);
 
+  texture_id TextureID = { };
+  if (GetPlatformState().TexturesCount >= MAX_TEXTURES) {
+    return (TextureID);
+  }
+  texture_file& TextureFile = GetPlatformState().Textures[GetPlatformState().TexturesCount];
+  if (TextureFile.Texture.loadFromImage(Image)) {
+    TextureID.Handle = GetPlatformState().TexturesCount++;
+    sf::Vector2u size = TextureFile.Texture.getSize();
+    TextureID.Width = (f32)size.x;
+    TextureID.Height = (f32)size.y;
+  }
+  return (TextureID);
 }
 
 PLATFORM_USE_TEXTURE(PlatformUseTexture) {

@@ -9,7 +9,6 @@
 #include "../common/linalg.h"
 #include "../common/graphics.h"
 #include "../common/input.h"
-#include "../common/hash.h"
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
@@ -23,7 +22,9 @@ typedef PLATFORM_LOAD_TEXTURE(platform_load_texture_t);
 
 #define PLATFORM_LOAD_TEXTURE_FROM_MEMORY(name) texture_id name(void* TextureData, \
                                                                 u32 Width, \
-                                                                u32 Height)
+                                                                u32 Height, \
+                                                                u32 BPP, \
+                                                                arena* ScratchArena)
 typedef PLATFORM_LOAD_TEXTURE_FROM_MEMORY(platform_load_texture_from_memory_t);
 
 #define PLATFORM_USE_TEXTURE(name) void name(texture_id TextureHandle)

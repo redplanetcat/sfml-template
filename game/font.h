@@ -17,14 +17,16 @@ struct font_data {
 };
 
 internal font_data
-LoadDefaultFont(arena* PermArena, platform_callbacks* Callbacks) {
+LoadDefaultFont(arena* PermArena, arena* ScratchArena, platform_callbacks* Callbacks) {
   font_data FontData;
   u32 AtlasLen = ArrayCount(DefaultAtlas);
   FontData.Atlas = (font_glyph*)ArenaAlloc(PermArena, sizeof(font_glyph) * AtlasLen);
   FontData.Texture = Callbacks->PlatformLoadTextureFromMemory(
                                                 (void*)DefaultAtlasTextureData, 
                                                 DEFAULT_ATLAS_WIDTH, 
-                                                DEFAULT_ATLAS_HEIGHT);
+                                                DEFAULT_ATLAS_HEIGHT,
+                                                DEFAULT_ATLAS_BPP,
+                                                ScratchArena);
 
   u32 AtlasIdx = 0;
   for (u32 I = DEFAULT_ATLAS_FONT; I < AtlasLen; ++I) {
