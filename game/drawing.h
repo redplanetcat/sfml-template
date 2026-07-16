@@ -111,7 +111,8 @@ CompareCommands(const void* A, const void* B) {
   DrawStateB |= (CmdB->Z << 16);
   DrawStateB |= (CmdB->Shader.Handle << 8);
   DrawStateB |= CmdB->Texture.Handle;
-  return ((i32)DrawStateB - (i32)DrawStateA);
+  //printf("DrawStateA: %u (Z: %u, %f:%f:%f:%f), DrawStateB: %u (Z: %u, %f:%f:%f:%f)\n", DrawStateA, CmdA->Z, CmdA->DstRect.x, CmdA->DstRect.y, CmdA->DstRect.w, CmdA->DstRect.h, DrawStateB, CmdB->Z, CmdB->DstRect.x, CmdB->DstRect.y, CmdB->DstRect.w, CmdB->DstRect.h);
+  return ((i64)DrawStateA - (i64)DrawStateB);
 }
 
 internal void
@@ -166,10 +167,8 @@ FlushCommandStack(command_stack* CommandStack,
   }
 
   if (NumVertices > 0) {
-    if (RenderStateChanged) {
-      Callbacks->PlatformUseShader(Shader);
-      Callbacks->PlatformUseTexture(Texture);
-    }
+    Callbacks->PlatformUseShader(Shader);
+    Callbacks->PlatformUseTexture(Texture);
     Callbacks->PlatformDrawVertices(VertexBuffer, NumVertices, primitive_type::Triangles);
   }
 
@@ -182,7 +181,7 @@ DrawText(const char* Text,
          font_data* FontData, 
          vec2 Pos, 
          color Color, 
-         i32 Z,
+         u32 Z,
          command_stack* CommandStack) 
 {
   draw_command Command = { };

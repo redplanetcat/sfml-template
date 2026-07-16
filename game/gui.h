@@ -21,16 +21,27 @@ enum class container_flags: u32 {
   FitContent,
 };
 
+enum class margin: u32 {
+  Top,
+  Right,
+  Bottom,
+  Left
+};
+
 struct style {
   color BaseColor;
   color HotColor;
   color ActiveColor;
+  color TextColor;
+  f32 ButtonMargin[4];
 };
 
 global const style DefaultStyle = {
-  {100, 100, 100, 255},
-  {100, 200, 100, 255},
-  {200, 100, 100, 255}
+  {100, 100, 100, 255}, // BaseColor
+  {100, 200, 100, 255}, // HotColor
+  {200, 100, 100, 255}, // ActiveColor
+  {255, 255, 255, 255}, // TextColor
+  {4.f, 8.f, 4.f, 8.f} // ButtonMargin
 };
 
 struct container {
@@ -61,10 +72,25 @@ struct context {
   b32 MiddleMousePressed;
 
   /* Drawing */
+  style Style;
   font_data FontData;
   command_stack* CommandStack;
   u32 ZBase;
 };
+
+internal vec2
+GetTextSize(const char* Text, u32 TextLen, font_data* FontData) {
+  f32 Length = 0.f;
+  f32 Height = (f32)FontData->CharHeight;
+  for (u32 I = 0; I < TextLen; ++I) {
+    u8 Byte = Text[I];
+    if ((Byte & 0xc0) == 0x80) continue;
+    u8 Char = MIN(Byte, 127);
+    font_glyph Glyph = FontData->Atlas[u32(Char)];
+    Length = Length + (f32)Glyph.XAdvance;
+  }
+  return (vec2{Length, Height});
+}
 
 internal void
 GuiInit(context* CTX, 
@@ -75,9 +101,10 @@ GuiInit(context* CTX,
 {
   CTX->NumIDs = 1;
   CTX->NumContainers = 1;
-  CTX->ZBase = UINT32_MAX / 2;
+  CTX->ZBase = UINT8_MAX / 2;
   CTX->CommandStack = CommandStack;
   CTX->FontData = LoadDefaultFont(PermArena, ScratchArena, Callbacks);
+  CTX->Style = DefaultStyle;
 }
 
 
@@ -132,16 +159,16 @@ internal container
 CreateChildContainer(context* CTX, container* Parent) {
   container Container = {};
   Container.Rect = {
-    Parent->Rect.x + Parent->Margin[3],
-    Parent->Rect.y + Parent->Margin[0],
-    Parent->Rect.w - (Parent->Margin[1] + Parent->Margin[3]),
-    Parent->Rect.h - (Parent->Margin[0] + Parent->Margin[2])
+    Parent->Rect.x + Parent->Margin[(u32)margin::Left],
+    Parent->Rect.y + Parent->Margin[(u32)margin::Top],
+    Parent->Rect.w - 
+      (Parent->Margin[(u32)margin::Right] + Parent->Margin[(u32)margin::Left]),
+    Parent->Rect.h - 
+      (Parent->Margin[(u32)margin::Top] + Parent->Margin[(u32)margin::Bottom])
   };
   memset(Container.Margin, 0, sizeof(Container.Margin));
   Container.Z = Parent->Z + 1;
   Container.Flags = Parent->Flags;
-  Container.Style = Parent->Style;
-  Container.Layout = Parent->Layout;
   return (Container);
 }
 
@@ -162,20 +189,15 @@ GuiDrawPanel(context* CTX, container* Container) {
   Command.DstRect = Container->Rect;
   Command.Z = Container->Z;
   PushDrawCommand(CTX->CommandStack, &Command);
-
 }
 
 internal void
-GuiDrawButton(context* CTX, element_id Id) {
-  color Color = {255, 255, 255, 255};
-  vec2 Pos = {16.f, 32.f};
-  DrawText("Button",
-           (u32)strlen("Button"),
-           &CTX->FontData, 
-           Pos, 
-           Color, 
-           CTX->ZBase+1,
-           CTX->CommandStack); 
+GuiDrawButton(context* CTX, container* Container) {
+  draw_command Command = { };
+  Command.Color = Container->Style.BaseColor;
+  Command.DstRect = Container->Rect;
+  Command.Z = Container->Z;
+  PushDrawCommand(CTX->CommandStack, &Command);
 }
 
 internal void
@@ -191,7 +213,7 @@ GuiBegin(context* CTX) {
   memset(Container.Margin, 0, sizeof(Container.Margin));
   Container.Z = CTX->ZBase;
   Container.Flags = 0;
-  Container.Style = DefaultStyle;
+  Container.Style = CTX->Style;
   Container.Layout = layout::Vertical;
   GuiPushContainer(CTX, &Container);
 
@@ -203,11 +225,14 @@ GuiEnd(context* CTX) {
 }
 
 internal void
-PanelBegin(context* CTX, const char* Name) {
+PanelBegin(context* CTX, const char* Name,
+           layout Layout = layout::Vertical) 
+{
   GuiPushId(CTX, (const void*) Name, (u32)strlen(Name));
   container Container = CreateChildContainer(CTX, 
-                                          &CTX->Containers[CTX->NumContainers - 1]);
-  Container.Rect = {200, 200, 200, 200};
+                                    &CTX->Containers[CTX->NumContainers - 1]);
+  Container.Style = CTX->Style;
+  Container.Layout = Layout;
   GuiPushContainer(CTX, &Container);
   GuiDrawPanel(CTX, &Container);
 }
@@ -219,8 +244,20 @@ PanelEnd(context* CTX) {
 }
 
 internal void
-Text(context* CTX, const char* Text) {
-
+Label(context* CTX, const char* Text) {
+  u32 TextLen = (u32)strlen(Text);
+  container Parent = CTX->Containers[CTX->NumContainers-1];
+  vec2 Pos = vec2{ Parent.Rect.x + Parent.Margin[(u32)margin::Left], 
+                   Parent.Rect.y + Parent.Margin[(u32)margin::Top ] };
+  color Color = CTX->Style.TextColor;
+  DrawText(Text,
+           TextLen,
+           &CTX->FontData, 
+           Pos, 
+           Color, 
+           Parent.Z + 1,
+           CTX->CommandStack); 
+  
 }
 
 internal void
@@ -231,15 +268,29 @@ Image(context* CTX, image* Image) {
 internal b32
 Button(context* CTX, const char* Text) {
   b32 Clicked = false;
-  element_id Id = GuiGetId(CTX, (const void*)Text, (u32)strlen(Text));
+  u32 TextLen = (u32)strlen(Text);
+  element_id Id = GuiGetId(CTX, (const void*)Text, TextLen);
+  vec2 TextSize = GetTextSize(Text, TextLen, &CTX->FontData);
+  container Container = CreateChildContainer(CTX, 
+                                    &CTX->Containers[CTX->NumContainers - 1]);
+  Container.Style = CTX->Style;
+  Container.Layout = layout::Horizontal;
+  memcpy(Container.Margin, CTX->Style.ButtonMargin, sizeof(Container.Margin));
+  Container.Rect.w = TextSize.x + 
+    Container.Margin[(u32)margin::Left] + Container.Margin[(u32)margin::Right];
+  Container.Rect.h = TextSize.y +
+    Container.Margin[(u32)margin::Top] + Container.Margin[(u32)margin::Bottom];
+  GuiPushContainer(CTX, &Container);
+  Label(CTX, Text);
+  GuiPopContainer(CTX);
 
   GuiUpdateElementInput(CTX, Id);
-  
+
   if (CTX->Active.Id == Id.Id) {
     Clicked = true;
   }
 
-  GuiDrawButton(CTX, Id);
+  GuiDrawButton(CTX, &Container);
   return (Clicked);
 }
 

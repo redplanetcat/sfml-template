@@ -17,7 +17,7 @@ Win32LoadGameCode(char* SourceDLLName, char* TempDLLName) {
     win32_game_code Result = {};
 
     CopyFile(SourceDLLName, TempDLLName, FALSE);
-    Result.GameCodeDLL = LoadLibraryA("libgame.dll");
+    Result.GameCodeDLL = LoadLibraryA(TempDLLName);
     if (Result.GameCodeDLL) {
         Result.Update = (game_update_t*)GetProcAddress(Result.GameCodeDLL, "GameUpdate");
         Result.Render = (game_render_t*)GetProcAddress(Result.GameCodeDLL, "GameRender");
