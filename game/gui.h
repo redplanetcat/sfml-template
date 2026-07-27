@@ -92,6 +92,12 @@ struct context {
   b32 LeftMousePressed;
   b32 RightMousePressed;
   b32 MiddleMousePressed;
+  b32 LeftMouseDown;
+  b32 RightMouseDown;
+  b32 MiddleMouseDown;
+  vec2 MousePosition;
+  vec2 MouseDelta;
+  f32 MouseWheel;
 
   /* Drawing */
   style Style;
@@ -135,11 +141,37 @@ GuiUpdateInputState(context* CTX, game_input* Input) {
   if (!Input->IsMouseButtonDown(mouse_button::Left)) {
     CTX->Active = {};
   }
+  CTX->LeftMouseDown = Input->IsMouseButtonDown(mouse_button::Left);
+  CTX->RightMouseDown = Input->IsMouseButtonDown(mouse_button::Right);
+  CTX->MiddleMouseDown = Input->IsMouseButtonDown(mouse_button::Middle);
+  CTX->LeftMousePressed = Input->IsMouseButtonPressed(mouse_button::Left);
+  CTX->RightMousePressed = Input->IsMouseButtonPressed(mouse_button::Right);
+  CTX->MiddleMousePressed = Input->IsMouseButtonPressed(mouse_button::Middle);
+  CTX->MousePosition = Input->MousePosition;
+  CTX->MouseDelta = Input->MouseDelta;
+  CTX->MouseWheel = Input->MouseWheel;
 }
 
 internal void
-GuiUpdateElementInput(context* CTX, element_id Id) {
+GuiUpdateElementInput(context* CTX, element_id Id, container* Container) {
+  bool MouseOver = Container->Rect.Contains(CTX->MousePosition);
+  if (MouseOver && !CTX->LeftMousePressed) {
+    CTX->Active = Id;
+  }
 
+  if (CTX->Hot.Id == Id.Id) {
+    if (CTX->LeftMousePressed && !MouseOver) {
+      // TODO: Clear ui focus
+    }
+  }
+
+  if (CTX->Active.Id == Id.Id) {
+    if (CTX->LeftMousePressed) {
+      // TODO: Set ui focus
+    } else if (!MouseOver) {
+      CTX->Active = element_id{};
+    }
+  }
 }
 
 internal element_id
@@ -238,11 +270,20 @@ GuiDrawPanel(context* CTX, container* Container) {
 }
 
 internal void
-GuiDrawButton(context* CTX, container* Container) {
+GuiDrawButton(context* CTX, element_id Id, container* Container) {
   draw_command Command = { };
-  Command.Color = Container->Style.BaseColor;
   Command.DstRect = Container->Rect;
   Command.Z = Container->Z;
+  b32 Hovered = (CTX->Active.Id == Id.Id);
+  if (Hovered) {
+    if (CTX->LeftMouseDown) {
+      Command.Color = Container->Style.ActiveColor;
+    } else {
+      Command.Color = Container->Style.HotColor;
+    }
+  } else {
+    Command.Color = Container->Style.BaseColor;
+  }
   PushDrawCommand(CTX->CommandStack, &Command);
 }
 
@@ -356,13 +397,15 @@ Button(context* CTX, const char* Text) {
   Label(CTX, Text);
   GuiPopContainer(CTX);
 
-  GuiUpdateElementInput(CTX, Id);
+  GuiUpdateElementInput(CTX, Id, &Container);
 
-  if (CTX->Active.Id == Id.Id) {
+  b32 Hovered = (CTX->Active.Id == Id.Id);
+
+  if (CTX->LeftMousePressed && Hovered) {
     Clicked = true;
   }
 
-  GuiDrawButton(CTX, &Container);
+  GuiDrawButton(CTX, Id, &Container);
   return (Clicked);
 }
 
