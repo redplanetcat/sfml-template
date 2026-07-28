@@ -5,11 +5,11 @@ void DrawMenu(gui::context* CTX) {
 
   CTX->Style.BaseColor = {200, 200, 200, 255};
 
-  gui::PanelBegin(CTX, "Panel", gui::layout::Vertical);
+  gui::PanelBegin(CTX, "Panel", gui::layout::Vertical, (u32)gui::container_flags::Expand);
 
     gui::Label(CTX, "Menu");
 
-    gui::PanelBegin(CTX, "Panel", gui::layout::Horizontal);
+    gui::PanelBegin(CTX, "Panel", gui::layout::Horizontal, (u32)gui::container_flags::Expand);
 
       CTX->Style.BaseColor = {255, 0, 0, 255};
 

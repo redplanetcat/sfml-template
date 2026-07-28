@@ -69,6 +69,7 @@ struct container {
   f32 Gap;
   u32 Z;
   u32 Flags;
+  u32 ChildrenCount;
   style Style;
   layout Layout;
   align Align;
@@ -216,8 +217,9 @@ CreateChildContainer(context* CTX,
                      container* Parent, 
                      f32 Width = 0.f,
                      f32 Height = 0.f,
-                     layout Layout = layout::Horizontal) 
+                     layout Layout = layout::Horizontal)
 {
+  Parent->ChildrenCount += 1;
   container Container = {};
   f32 LeftMargin = Parent->Margin[(u32)margin::Left];
   f32 TopMargin = Parent->Margin[(u32)margin::Top];
@@ -227,12 +229,12 @@ CreateChildContainer(context* CTX,
   f32 TopContent = Parent->Content[(u32)layout::Vertical];
   f32 LeftGap = (LeftContent > 0.f ? Parent->Gap : 0.f);
   f32 TopGap = (TopContent > 0.f ? Parent->Gap : 0.f);
-  Container.Rect.x = Parent->Rect.x + LeftMargin + (Parent->Layout == layout::Horizontal
-        ? LeftContent + LeftGap
-        : 0.f);
-  Container.Rect.y = Parent->Rect.y + TopMargin + (Parent->Layout == layout::Vertical
-        ? TopContent + TopGap
-        : 0.f);
+  f32 LeftOffset = (Parent->Layout == layout::Horizontal) ? LeftContent + LeftGap : 0.f;
+  f32 TopOffset = (Parent->Layout == layout::Vertical) ? TopContent + TopGap : 0.f;
+  
+
+  Container.Rect.x = Parent->Rect.x + LeftMargin + LeftOffset;
+  Container.Rect.y = Parent->Rect.y + TopMargin + TopOffset;
   Container.Rect.w = Width;
   Container.Rect.h = Height;
   Parent->Content[(u32)layout::Horizontal] = (Parent->Layout == layout::Horizontal
@@ -242,7 +244,6 @@ CreateChildContainer(context* CTX,
         ? TopContent + TopGap + Container.Rect.h
         : Container.Rect.h);
   Container.Z = Parent->Z + 1;
-  Container.Flags = Parent->Flags;
   Container.Gap = (Layout == layout::Horizontal 
                    ? CTX->Style.HorizontalGap
                    : CTX->Style.VerticalGap);
@@ -252,16 +253,6 @@ CreateChildContainer(context* CTX,
 internal void
 GuiDrawPanel(context* CTX, container* Container) {
   draw_command Command = { };
-  //Command.Texture = E.Texture;
-  //Command.Shader = E.Shader;
-  //Command.Z = E.Z;
-  //Command.Color = E.Color;
-  //Command.Rotation = E.Rot;
-  //vec2 ScaledSize = vec2{ E.Size.x * (1.f + E.Scale), E.Size.y * (1.f + E.Scale) };
-  //vec2 Position = vec2{ E.Pos.x - ScaledSize.x / 2.f, E.Pos.y - ScaledSize.y / 2.f };
-  //if (E.Flags & (u32)entity_flags::Flip) {
-  //  Command.Flags |= (u32)draw_command_flags::Flip;
-  //}
   Command.Color = Container->Style.BaseColor;
   Command.Color.a = 150;
   Command.DstRect = Container->Rect;
@@ -299,7 +290,7 @@ GuiBegin(context* CTX) {
   };
   memset(Container.Margin, 0, sizeof(Container.Margin));
   Container.Z = CTX->ZBase;
-  Container.Flags = 0;
+  Container.Flags = (u32)container_flags::Expand;
   Container.Style = CTX->Style;
   Container.Layout = layout::Vertical;
   GuiPushContainer(CTX, &Container);
@@ -312,14 +303,17 @@ GuiEnd(context* CTX) {
 }
 
 internal void
-PanelBegin(context* CTX, const char* Name,
-           layout Layout = layout::Vertical) 
+PanelBegin(context* CTX, 
+           const char* Name,
+           layout Layout = layout::Vertical,
+           u32 Flags = 0) 
 {
   GuiPushId(CTX, (const void*) Name, (u32)strlen(Name));
-  container Container = CreateChildContainer(CTX, 
-                                    &CTX->Containers[CTX->NumContainers - 1]);
+  container* Parent = &CTX->Containers[CTX->NumContainers-1];
+  container Container = CreateChildContainer(CTX, Parent);
   Container.Style = CTX->Style;
   Container.Layout = Layout;
+  Container.Flags = Flags;
   GuiPushContainer(CTX, &Container);
 }
 
@@ -327,24 +321,31 @@ internal void
 PanelEnd(context* CTX) {
   container* Panel = GuiPopContainer(CTX);
   container* Parent = &CTX->Containers[CTX->NumContainers-1];
-  Panel->Rect.w = Panel->Content[(u32)layout::Horizontal] 
-                  + Panel->Margin[(u32)margin::Left]
-                  + Panel->Margin[(u32)margin::Right];
-  Panel->Rect.h = Panel->Content[(u32)layout::Vertical]
-                  + Panel->Margin[(u32)margin::Top]
-                  + Panel->Margin[(u32)margin::Bottom];
+  b32 EvenSpread = (Parent->Flags & (u32)container_flags::Expand) == (u32)container_flags::Expand;
+  if (!EvenSpread) {
+    Panel->Rect.w = Panel->Content[(u32)layout::Horizontal] 
+                    + Panel->Margin[(u32)margin::Left]
+                    + Panel->Margin[(u32)margin::Right];
+    Panel->Rect.h = Panel->Content[(u32)layout::Vertical]
+                    + Panel->Margin[(u32)margin::Top]
+                    + Panel->Margin[(u32)margin::Bottom];
+  }
+  //if (EvenSpread) {
+  //  f32 LeftMargin = Parent->Margin[(u32)margin::Left];
+  //  f32 RightMargin = Parent->Margin[(u32)margin::Right];
+  //  f32 TopMargin = Parent->Margin[(u32)margin::Top];
+  //  f32 BottomMargin = Parent->Margin[(u32)margin::Bottom];
+  //  Panel->Rect.w = (Parent->Layout == layout::Horizontal)
+  //                  ? Parent->Rect.w / Parent->ChildrenCount
+  //                  : Panel->Rect.w;
+  //  Panel->Rect.h = (Parent->Layout == layout::Vertical)
+  //                  ? Parent->Rect.h / Parent->ChildrenCount
+  //                  : Panel->Rect.h;
+  //}
   Parent->Content[(u32)layout::Horizontal] = Parent->Content[(u32)layout::Horizontal] 
         + Panel->Content[(u32)layout::Horizontal];
-        //- (Parent->Layout == layout::Horizontal ? Parent->Gap : 0.f);
   Parent->Content[(u32)layout::Vertical] = Parent->Content[(u32)layout::Vertical] 
         + Panel->Content[(u32)layout::Vertical];
-        //- (Parent->Layout == layout::Vertical ? Parent->Gap : 0.f);
-  //Parent->Content[(u32)layout::Horizontal] = (Parent->Layout == layout::Horizontal
-  //      ? Parent->Content[(u32)layout::Horizontal] + Parent->Gap + Panel->Rect.w
-  //      : Panel->Content[(u32)layout::Horizontal]);
-  //Parent->Content[(u32)layout::Vertical] = (Parent->Layout == layout::Vertical
-  //      ? Panel->Content[(u32)layout::Vertical] + Parent->Gap
-  //      : Panel->Content[(u32)layout::Vertical]);
   GuiDrawPanel(CTX, Panel);
   GuiPopId(CTX);
 }
@@ -385,11 +386,12 @@ Button(context* CTX, const char* Text) {
                                 + CTX->Style.ButtonMargin[(u32)margin::Right];
   f32 ButtonHeight = TextSize.y + CTX->Style.ButtonMargin[(u32)margin::Top]
                                 + CTX->Style.ButtonMargin[(u32)margin::Bottom];
+  container* Parent = &CTX->Containers[CTX->NumContainers - 1];
   container Container = CreateChildContainer(CTX, 
-                                    &CTX->Containers[CTX->NumContainers - 1],
-                                    ButtonWidth,
-                                    ButtonHeight,
-                                    layout::Horizontal);
+                                             Parent,
+                                             ButtonWidth,
+                                             ButtonHeight,
+                                             layout::Horizontal);
   Container.Style = CTX->Style;
   Container.Layout = layout::Horizontal;
   memcpy(Container.Margin, CTX->Style.ButtonMargin, sizeof(Container.Margin));
