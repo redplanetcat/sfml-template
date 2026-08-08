@@ -100,7 +100,7 @@ MakeQuad(vertex* V, f32 X, f32 Y, f32 Width, f32 Height, color C,
 
 }
 
-internal int
+internal i32
 CompareCommands(const void* A, const void* B) {
   draw_command* CmdA = (draw_command*)A;
   draw_command* CmdB = (draw_command*)B;
@@ -112,7 +112,7 @@ CompareCommands(const void* A, const void* B) {
   DrawStateB |= (CmdB->Shader.Handle << 8);
   DrawStateB |= CmdB->Texture.Handle;
   //printf("DrawStateA: %u (Z: %u, %f:%f:%f:%f), DrawStateB: %u (Z: %u, %f:%f:%f:%f)\n", DrawStateA, CmdA->Z, CmdA->DstRect.x, CmdA->DstRect.y, CmdA->DstRect.w, CmdA->DstRect.h, DrawStateB, CmdB->Z, CmdB->DstRect.x, CmdB->DstRect.y, CmdB->DstRect.w, CmdB->DstRect.h);
-  return ((i64)DrawStateA - (i64)DrawStateB);
+  return ((i32)DrawStateA - (i32)DrawStateB);
 }
 
 internal void
@@ -193,7 +193,7 @@ DrawText(const char* Text,
   };
 
   for (u32 I = 0; I < Length; ++I) {
-    u8 Byte = Text[I];
+    u8 Byte = (u8)Text[I];
     if ((Byte & 0xc0) == 0x80) continue;
     u8 Char = MIN(Byte, 127);
     font_glyph Glyph = FontData->Atlas[u32(Char)];

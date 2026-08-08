@@ -30,7 +30,9 @@ struct game_state {
   f32 PlayerSpeed;
   u32 Score;
   b32 IsInitialized;
+  u8 GameMode;
 };
+
 
 struct player_settings {
   f32 InitialSpeed = 200.f;
@@ -477,7 +479,7 @@ GAME_RENDER(GameRender) {
   }
   game_state* GameState = (game_state*)Memory->PermanentStorage;
   DrawBackground(GameState, &Memory->PlatformCallbacks);
-  DrawMenu(&GameState->GuiContext);
+  DrawMenu(&GameState->GuiContext, &GameState->GameMode);
   FlushCommandStack(&GameState->CommandStack, 
                     &Memory->PlatformCallbacks, 
                     &GameState->ScratchArena);

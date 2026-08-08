@@ -90,6 +90,12 @@ struct game_memory {
   platform_callbacks PlatformCallbacks;
 };
 
+enum class game_mode: u8 {
+  InfiniteApples,
+  ManyApples,
+  SpeedUpOnScore,
+};
+
 
 #define GAME_UPDATE(name) void name(game_memory* Memory, game_input* Input, f32 Delta)
 typedef GAME_UPDATE(game_update_t);

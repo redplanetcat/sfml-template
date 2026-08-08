@@ -18,7 +18,6 @@ enum class layout: u32 {
 
 enum class container_flags: u32 {
   Hidden,
-  Expand,
 };
 
 enum class margin: u32 {
@@ -65,11 +64,10 @@ global const style DefaultStyle = {
 struct container {
   rect Rect;
   f32 Margin[4];
-  f32 Content[2];
+  vec2 Content;
   f32 Gap;
   u32 Z;
   u32 Flags;
-  u32 ChildrenCount;
   style Style;
   layout Layout;
   align Align;
@@ -112,7 +110,7 @@ GetTextSize(const char* Text, u32 TextLen, font_data* FontData) {
   f32 Length = 0.f;
   f32 Height = (f32)FontData->CharHeight;
   for (u32 I = 0; I < TextLen; ++I) {
-    u8 Byte = Text[I];
+    u8 Byte = (u8)Text[I];
     if ((Byte & 0xc0) == 0x80) continue;
     u8 Char = MIN(Byte, 127);
     font_glyph Glyph = FontData->Atlas[u32(Char)];
@@ -219,30 +217,32 @@ CreateChildContainer(context* CTX,
                      f32 Height = 0.f,
                      layout Layout = layout::Horizontal)
 {
-  Parent->ChildrenCount += 1;
   container Container = {};
   f32 LeftMargin = Parent->Margin[(u32)margin::Left];
   f32 TopMargin = Parent->Margin[(u32)margin::Top];
   f32 RightMargin = Parent->Margin[(u32)margin::Right];
   f32 BottomMargin = Parent->Margin[(u32)margin::Bottom];
-  f32 LeftContent = Parent->Content[(u32)layout::Horizontal];
-  f32 TopContent = Parent->Content[(u32)layout::Vertical];
+  f32 LeftContent = Parent->Content.x;
+  f32 TopContent = Parent->Content.y;
   f32 LeftGap = (LeftContent > 0.f ? Parent->Gap : 0.f);
   f32 TopGap = (TopContent > 0.f ? Parent->Gap : 0.f);
-  f32 LeftOffset = (Parent->Layout == layout::Horizontal) ? LeftContent + LeftGap : 0.f;
-  f32 TopOffset = (Parent->Layout == layout::Vertical) ? TopContent + TopGap : 0.f;
-  
+  f32 LeftOffset = (Parent->Layout == layout::Horizontal) 
+                                ? LeftContent + LeftGap 
+                                : 0.f;
+  f32 TopOffset = (Parent->Layout == layout::Vertical) 
+                                ? TopContent + TopGap 
+                                : 0.f;
 
   Container.Rect.x = Parent->Rect.x + LeftMargin + LeftOffset;
   Container.Rect.y = Parent->Rect.y + TopMargin + TopOffset;
   Container.Rect.w = Width;
   Container.Rect.h = Height;
-  Parent->Content[(u32)layout::Horizontal] = (Parent->Layout == layout::Horizontal
+  Parent->Content.x = (Parent->Layout == layout::Horizontal
         ? LeftContent + LeftGap + Container.Rect.w
-        : Container.Rect.w);
-  Parent->Content[(u32)layout::Vertical] = (Parent->Layout == layout::Vertical
+        : MAX(Parent->Content.x, Container.Rect.w));
+  Parent->Content.y = (Parent->Layout == layout::Vertical
         ? TopContent + TopGap + Container.Rect.h
-        : Container.Rect.h);
+        : MAX(Parent->Content.y, Container.Rect.h));
   Container.Z = Parent->Z + 1;
   Container.Gap = (Layout == layout::Horizontal 
                    ? CTX->Style.HorizontalGap
@@ -290,7 +290,7 @@ GuiBegin(context* CTX) {
   };
   memset(Container.Margin, 0, sizeof(Container.Margin));
   Container.Z = CTX->ZBase;
-  Container.Flags = (u32)container_flags::Expand;
+  Container.Flags = 0;
   Container.Style = CTX->Style;
   Container.Layout = layout::Vertical;
   GuiPushContainer(CTX, &Container);
@@ -321,31 +321,20 @@ internal void
 PanelEnd(context* CTX) {
   container* Panel = GuiPopContainer(CTX);
   container* Parent = &CTX->Containers[CTX->NumContainers-1];
-  b32 EvenSpread = (Parent->Flags & (u32)container_flags::Expand) == (u32)container_flags::Expand;
-  if (!EvenSpread) {
-    Panel->Rect.w = Panel->Content[(u32)layout::Horizontal] 
-                    + Panel->Margin[(u32)margin::Left]
-                    + Panel->Margin[(u32)margin::Right];
-    Panel->Rect.h = Panel->Content[(u32)layout::Vertical]
-                    + Panel->Margin[(u32)margin::Top]
-                    + Panel->Margin[(u32)margin::Bottom];
+  Panel->Rect.w = Panel->Content.x
+                  + Panel->Margin[(u32)margin::Left]
+                  + Panel->Margin[(u32)margin::Right];
+  Panel->Rect.h = Panel->Content.y
+                  + Panel->Margin[(u32)margin::Top]
+                  + Panel->Margin[(u32)margin::Bottom];
+
+  if (Parent->Layout == layout::Horizontal) {
+    Parent->Content.x += Panel->Content.x;
+    Parent->Content.y = MAX(Parent->Content.y, Panel->Content.y);
+  } else {
+    Parent->Content.y += Panel->Content.y;
+    Parent->Content.x = MAX(Parent->Content.x, Panel->Content.x);
   }
-  //if (EvenSpread) {
-  //  f32 LeftMargin = Parent->Margin[(u32)margin::Left];
-  //  f32 RightMargin = Parent->Margin[(u32)margin::Right];
-  //  f32 TopMargin = Parent->Margin[(u32)margin::Top];
-  //  f32 BottomMargin = Parent->Margin[(u32)margin::Bottom];
-  //  Panel->Rect.w = (Parent->Layout == layout::Horizontal)
-  //                  ? Parent->Rect.w / Parent->ChildrenCount
-  //                  : Panel->Rect.w;
-  //  Panel->Rect.h = (Parent->Layout == layout::Vertical)
-  //                  ? Parent->Rect.h / Parent->ChildrenCount
-  //                  : Panel->Rect.h;
-  //}
-  Parent->Content[(u32)layout::Horizontal] = Parent->Content[(u32)layout::Horizontal] 
-        + Panel->Content[(u32)layout::Horizontal];
-  Parent->Content[(u32)layout::Vertical] = Parent->Content[(u32)layout::Vertical] 
-        + Panel->Content[(u32)layout::Vertical];
   GuiDrawPanel(CTX, Panel);
   GuiPopId(CTX);
 }
@@ -356,12 +345,16 @@ Label(context* CTX, const char* Text) {
   container* Parent = &CTX->Containers[CTX->NumContainers-1];
   f32 LeftMargin = Parent->Margin[(u32)margin::Left];
   f32 TopMargin = Parent->Margin[(u32)margin::Top];
-  f32 LeftContent = Parent->Content[(u32)layout::Horizontal];
-  f32 TopContent = Parent->Content[(u32)layout::Vertical];
+  f32 LeftContent = Parent->Content.x;
+  f32 TopContent = Parent->Content.y;
   vec2 Pos = vec2{ Parent->Rect.x + LeftMargin + LeftContent, 
                    Parent->Rect.y + TopMargin + TopContent };
   color Color = CTX->Style.TextColor;
-  Parent->Content[(u32)layout::Vertical] += (CTX->FontData.CharHeight + Parent->Gap);
+  vec2 TextSize = GetTextSize(Text, TextLen, &CTX->FontData);
+  Parent->Content.y += 
+                  (Parent->Layout == layout::Vertical) * TextSize.y;
+  Parent->Content.x += 
+                  (Parent->Layout == layout::Horizontal) * TextSize.x;
   DrawText(Text,
            TextLen,
            &CTX->FontData, 
