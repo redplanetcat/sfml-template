@@ -94,6 +94,13 @@ enum class game_mode: u8 {
   InfiniteApples,
   ManyApples,
   SpeedUpOnScore,
+  MenuHidden,
+};
+
+enum class game_scene: u8 {
+  StartMenu = 0,
+  Game,
+  WinScreen,
 };
 
 

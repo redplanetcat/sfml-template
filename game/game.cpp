@@ -10,6 +10,7 @@
 
 namespace apples_game {
 
+
 struct game_state {
   arena PermArena;
   arena ScratchArena;
@@ -31,6 +32,7 @@ struct game_state {
   u32 Score;
   b32 IsInitialized;
   u8 GameMode;
+  game_scene Scene;
 };
 
 
@@ -43,6 +45,8 @@ struct player_settings {
   vec2 StartPosition = vec2{ WINDOW_WIDTH/2.f, WINDOW_HEIGHT/2.f };
   f32 RestartTime = 3.f;
   i32 AppleScore = 100;
+  u32 NumStartingApplesA = 20;
+  u32 NumStartingApplesB = 50;
 };
 
 constexpr player_settings PlayerSettings = player_settings();
@@ -98,6 +102,16 @@ SpawnApple(game_state* GameState) {
 }
 
 internal void
+SpawnStartingApples(game_state* GameState) {
+  u32 ApplesToSpawn = (GameState->GameMode & (1 << (u32)game_mode::ManyApples))
+              ? PlayerSettings.NumStartingApplesB
+              : PlayerSettings.NumStartingApplesA;
+  for (u32 I = 0; I < ApplesToSpawn; I++) {
+    SpawnApple(GameState);
+  }
+}
+
+internal void
 SpawnStone(game_state* GameState) {
   vec2 StonePosition = GetRandomPointAwayFromPlayer(GameState, 64);
   entity_ref StoneRef = GameState->Entities.Add(kind::Stone);
@@ -135,7 +149,7 @@ GameReset(game_state* GameState, platform_callbacks* Callbacks) {
   CreatePlayer(GameState);
   GameState->PlayerSpeed = PlayerSettings.InitialSpeed;
   srand((u32)time(NULL));
-  SpawnApple(GameState);
+  SpawnStartingApples(GameState);
 }
 
 internal void
@@ -207,8 +221,7 @@ GameInit(game_state* GameState, game_memory* Memory) {
     GameState->DeathSoundHandle = Callbacks->PlatformLoadSound("Resources/Sounds/Death.ogg");
     printf("Death sound handle: %u\n", GameState->DeathSoundHandle.Handle);
   }
-  GameReset(GameState, Callbacks);
-} 
+}
 
 internal void
 DrawBackground(game_state* GameState, platform_callbacks* Callbacks) {
@@ -306,8 +319,12 @@ OnAppleCollect(entity_ref AppleRef, game_state* GameState, platform_callbacks* C
   EM.Rem(AppleRef);
   printf("Apple collected!\n");
   UpdateScore(GameState, Callbacks, GameState->Score + PlayerSettings.AppleScore);
-  GameState->PlayerSpeed += PlayerSettings.SpeedDelta;
-  SpawnApple(GameState);
+  if (GameState->GameMode & (1 << (u32)game_mode::SpeedUpOnScore)) {
+    GameState->PlayerSpeed += PlayerSettings.SpeedDelta;
+  }
+  if (GameState->GameMode & (1 << (u32)game_mode::InfiniteApples)) {
+    SpawnApple(GameState);
+  }
   if (GameState->Score % 1000 == 0) {
     SpawnStone(GameState);
   }
@@ -425,7 +442,10 @@ UpdateTimers(game_state* GameState, platform_callbacks* Callbacks, f32 Delta) {
 }
 
 internal void
-UpdateSpawnAnimations(game_state* GameState, platform_callbacks* Callbacks, f32 Delta) {
+UpdateSpawnAnimations(game_state* GameState, 
+                      platform_callbacks* Callbacks, 
+                      f32 Delta) 
+{
   entity_manager& EM = GameState->Entities;
   for (auto E = EM.begin(); E != EM.end(); ++E) {
     if (E->Flags & (u32)entity_flags::SpawnAnimated) {
@@ -438,6 +458,35 @@ UpdateSpawnAnimations(game_state* GameState, platform_callbacks* Callbacks, f32 
       }
     }
   }
+}
+
+internal void 
+UpdateGame(game_state* GameState, 
+           platform_callbacks* Callbacks, 
+           game_input* Input, 
+           f32 Delta) 
+{
+  UpdateTimers(GameState, Callbacks, Delta);
+  UpdatePlayer(GameState, Callbacks, Input, Delta);
+  UpdateSpawnAnimations(GameState, Callbacks, Delta);
+  UpdateDamagers(GameState, Callbacks);
+  UpdatePickups(GameState, Callbacks);
+}
+
+internal void 
+UpdateStartMenu(game_state* GameState, 
+           platform_callbacks* Callbacks, 
+           game_input* Input, 
+           f32 Delta) 
+{
+}
+
+internal void 
+UpdateWinScreen(game_state* GameState, 
+           platform_callbacks* Callbacks, 
+           game_input* Input, 
+           f32 Delta) 
+{
 }
 
 } // namespace apples_game
@@ -459,11 +508,23 @@ GAME_UPDATE(GameUpdate) {
 
   GuiUpdateInputState(&GameState->GuiContext, Input);
 
-  UpdateTimers(GameState, &Memory->PlatformCallbacks, Delta);
-  UpdatePlayer(GameState, &Memory->PlatformCallbacks, Input, Delta);
-  UpdateSpawnAnimations(GameState, &Memory->PlatformCallbacks, Delta);
-  UpdateDamagers(GameState, &Memory->PlatformCallbacks);
-  UpdatePickups(GameState, &Memory->PlatformCallbacks);
+  if (Input->IsKeyPressed(key::F10)) {
+    GameState->GameMode ^= 1 << (u32)game_mode::MenuHidden;
+  }
+
+  switch (GameState->Scene) {
+    case (game_scene::StartMenu): {
+      UpdateStartMenu(GameState, &Memory->PlatformCallbacks, Input, Delta);
+    } break;
+    case (game_scene::Game): {
+      UpdateGame(GameState, &Memory->PlatformCallbacks, Input, Delta);
+    } break;
+    case (game_scene::WinScreen): {
+      UpdateWinScreen(GameState, &Memory->PlatformCallbacks, Input, Delta);
+    } break;
+    default: {}
+  }
+
   UpdateEntityGraphics(GameState);
 
   Input->SwapStates();
@@ -478,8 +539,9 @@ GAME_RENDER(GameRender) {
     Memory->IsInitialized = true;
   }
   game_state* GameState = (game_state*)Memory->PermanentStorage;
+
   DrawBackground(GameState, &Memory->PlatformCallbacks);
-  DrawMenu(&GameState->GuiContext, &GameState->GameMode);
+  DrawMenu(&GameState->GuiContext, &GameState->GameMode, &GameState->Scene);
   FlushCommandStack(&GameState->CommandStack, 
                     &Memory->PlatformCallbacks, 
                     &GameState->ScratchArena);

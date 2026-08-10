@@ -1,17 +1,22 @@
 #ifndef MENU_H
 
-void DrawMenu(gui::context* CTX, u8* GameMode) {
-  gui::GuiBegin(CTX);
+void DrawMenu(gui::context* CTX, u8* GameMode, game_scene* Scene) {
+  gui::GuiBegin(CTX, rect{64, 64, 128, 64});
 
-  CTX->Style.BaseColor = {200, 200, 200, 255};
+  CTX->Style.BaseColor = {200, 200, 200, 20};
 
   gui::PanelBegin(CTX, "PanelVerticalOuter", gui::layout::Vertical); 
 
-    gui::Label(CTX, "Menu");
+    gui::Label(CTX, "Show/Hide Menu: F10");
 
-    b32 InfiniteApplesOn = (*GameMode & 1 << (u32)game_mode::InfiniteApples);
-    b32 ManyApplesOn = (*GameMode & 1 << (u32)game_mode::ManyApples);
-    b32 SpeedUpOn = (*GameMode & 1 << (u32)game_mode::SpeedUpOnScore);
+    if (*GameMode & 1 << (u8)game_mode::MenuHidden) {
+      PanelEnd(CTX);
+      return;
+    }
+
+    b32 InfiniteApplesOn = (*GameMode & 1 << (u8)game_mode::InfiniteApples);
+    b32 ManyApplesOn = (*GameMode & 1 << (u8)game_mode::ManyApples);
+    b32 SpeedUpOn = (*GameMode & 1 << (u8)game_mode::SpeedUpOnScore);
 
     static char GameModeString[64];
     snprintf(GameModeString, sizeof(GameModeString), 
@@ -40,27 +45,21 @@ void DrawMenu(gui::context* CTX, u8* GameMode) {
 
     gui::PanelBegin(CTX, "PanelHorizontal", gui::layout::Horizontal);
 
-      CTX->Style.BaseColor = {255, 0, 0, 255};
-
       gui::PanelBegin(CTX, "PanelInner1");
 
-        CTX->Style.BaseColor = {100, 100, 100, 255};
         if (gui::Button(CTX, "Infinite Apples")) {
-          *GameMode ^= 1 << (u32)game_mode::InfiniteApples;
+          *GameMode ^= 1 << (u8)game_mode::InfiniteApples;
         };
         if (gui::Button(CTX, "Many Apples")) {
-          *GameMode ^= 1 << (u32)game_mode::ManyApples;
+          *GameMode ^= 1 << (u8)game_mode::ManyApples;
         };
 
       gui::PanelEnd(CTX); // PanelInner1
 
-      CTX->Style.BaseColor = {0, 255, 0, 255};
-
       gui::PanelBegin(CTX, "PanelInner2");
 
-        CTX->Style.BaseColor = {100, 100, 100, 255};
         if (gui::Button(CTX, "Speed Up")) {
-          *GameMode ^= 1 << (u32)game_mode::SpeedUpOnScore;
+          *GameMode ^= 1 << (u8)game_mode::SpeedUpOnScore;
         };
 
       gui::PanelEnd(CTX); // PanelInnner2
@@ -70,7 +69,8 @@ void DrawMenu(gui::context* CTX, u8* GameMode) {
     //gui::PanelBegin(CTX, "PanelStartGame");
 
       if (gui::Button(CTX, "Start Game!")) {
-
+        *Scene = game_scene::Game;
+        *GameMode |= (1 << (u8)game_mode::MenuHidden);
       }
 
     //gui::PanelEnd(CTX); // StartGamePanel

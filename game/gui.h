@@ -254,7 +254,6 @@ internal void
 GuiDrawPanel(context* CTX, container* Container) {
   draw_command Command = { };
   Command.Color = Container->Style.BaseColor;
-  Command.Color.a = 150;
   Command.DstRect = Container->Rect;
   Command.Z = Container->Z;
   PushDrawCommand(CTX->CommandStack, &Command);
@@ -279,15 +278,12 @@ GuiDrawButton(context* CTX, element_id Id, container* Container) {
 }
 
 internal void
-GuiBegin(context* CTX) {
+GuiBegin(context* CTX, rect Rect) {
   CTX->NumIDs = 1;
   CTX->NumContainers = 1;
 
   container Container = {};
-  Container.Rect = {
-    0, 0,
-    WINDOW_WIDTH, WINDOW_HEIGHT
-  };
+  Container.Rect = Rect;
   memset(Container.Margin, 0, sizeof(Container.Margin));
   Container.Z = CTX->ZBase;
   Container.Flags = 0;
