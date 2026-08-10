@@ -1,4 +1,4 @@
-@echo off
+@REM @echo off
 
 setlocal
 
@@ -16,23 +16,35 @@ setlocal enabledelayedexpansion
 set "PLATFORM_SRC_CHANGED=0"
 set "GAME_SRC_CHANGED=0"
 
-for /f "delims=" %%F in ('xcopy "%PLATFORM_SRC_DIR%\*.cpp" "%BUILD_DIR%\%PLATFORM_OUT_NAME%" /D /L /Y 2^>nul') do (
-  echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1"
+if exist "%BUILD_DIR%\%PLATFORM_OUT_NAME%" (
+  for /f "delims=" %%F in ('xcopy "%PLATFORM_SRC_DIR%\*.cpp" "%BUILD_DIR%\%PLATFORM_OUT_NAME%" /D /L /Y 2^>nul') do (
+    echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1"
+  )
+  for /f "delims=" %%F in ('xcopy "%PLATFORM_SRC_DIR%\*.h" "%BUILD_DIR%\%PLATFORM_OUT_NAME%" /D /L /Y 2^>nul') do (
+    echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1"
+  )
+) else (
+  set "PLATFORM_SRC_CHANGED=1"
 )
-for /f "delims=" %%F in ('xcopy "%PLATFORM_SRC_DIR%\*.h" "%BUILD_DIR%\%PLATFORM_OUT_NAME%" /D /L /Y 2^>nul') do (
-  echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1"
+if exist "%BUILD_DIR%\%GAME_OUT_NAME%" (
+  for /f "delims=" %%F in ('xcopy "%GAME_SRC_DIR%\*.cpp" "%BUILD_DIR%\%GAME_OUT_NAME%" /D /L /Y 2^>nul') do (
+    echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "GAME_SRC_CHANGED=1"
+  )
+  for /f "delims=" %%F in ('xcopy "%GAME_SRC_DIR%\*.h" "%BUILD_DIR%\%GAME_OUT_NAME%" /D /L /Y 2^>nul') do (
+    echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "GAME_SRC_CHANGED=1"
+  )
+) else (
+  set "GAME_SRC_CHANGED=1"
 )
-for /f "delims=" %%F in ('xcopy "%GAME_SRC_DIR%\*.cpp" "%BUILD_DIR%\%GAME_OUT_NAME%" /D /L /Y 2^>nul') do (
-  echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "GAME_SRC_CHANGED=1"
-)
-for /f "delims=" %%F in ('xcopy "%GAME_SRC_DIR%\*.h" "%BUILD_DIR%\%GAME_OUT_NAME%" /D /L /Y 2^>nul') do (
-  echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "GAME_SRC_CHANGED=1"
-)
-for /f "delims=" %%F in ('xcopy "%COMMON_SRC_DIR%\*.cpp" "%BUILD_DIR%\%PLATFORM_OUT_NAME%" /D /L /Y 2^>nul') do (
-  echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1" || set "GAME_SRC_CHANGED=1"
-)
-for /f "delims=" %%F in ('xcopy "%COMMON_SRC_DIR%\*.h" "%BUILD_DIR%\%PLATFORM_OUT_NAME%" /D /L /Y 2^>nul') do (
-  echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1" || set "GAME_SRC_CHANGED=1"
+if exist "%BUILD_DIR%\%PLATFORM_OUT_NAME%" (
+  for /f "delims=" %%F in ('xcopy "%COMMON_SRC_DIR%\*.cpp" "%BUILD_DIR%\%PLATFORM_OUT_NAME%" /D /L /Y 2^>nul') do (
+    echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1" || set "GAME_SRC_CHANGED=1"
+  )
+  for /f "delims=" %%F in ('xcopy "%COMMON_SRC_DIR%\*.h" "%BUILD_DIR%\%PLATFORM_OUT_NAME%" /D /L /Y 2^>nul') do (
+    echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1" || set "GAME_SRC_CHANGED=1"
+  )
+) else (
+  set "PLATFORM_SRC_CHANGED=1"
 )
 
 if "%PLATFORM_SRC_CHANGED%" == "0" if "%GAME_SRC_CHANGED%" == "0" (
