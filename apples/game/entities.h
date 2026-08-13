@@ -1,5 +1,7 @@
 #ifndef ENTITIES_H
 
+#include <vector>
+
 #define MAX_ENTITIES 2048
 
 enum class kind {

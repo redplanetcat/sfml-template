@@ -10,7 +10,6 @@
 
 namespace apples_game {
 
-
 struct game_state {
   arena PermArena;
   arena ScratchArena;
@@ -34,7 +33,6 @@ struct game_state {
   u8 GameMode;
   game_scene Scene;
 };
-
 
 struct player_settings {
   f32 InitialSpeed = 200.f;
@@ -103,9 +101,12 @@ SpawnApple(game_state* GameState) {
 
 internal void
 SpawnStartingApples(game_state* GameState) {
-  u32 ApplesToSpawn = (GameState->GameMode & (1 << (u32)game_mode::ManyApples))
+  u32 MaxApplesToSpawn = (GameState->GameMode & (1 << (u32)game_mode::ManyApples))
               ? PlayerSettings.NumStartingApplesB
               : PlayerSettings.NumStartingApplesA;
+  u32 MinApplesToSpawn = MaxApplesToSpawn / 2;
+  u32 ApplesToSpawn = (u32)(((f32)rand() / (f32)RAND_MAX) *
+              ((f32)MaxApplesToSpawn-(f32)MinApplesToSpawn) + (f32)MinApplesToSpawn);
   for (u32 I = 0; I < ApplesToSpawn; I++) {
     SpawnApple(GameState);
   }
@@ -262,7 +263,6 @@ OnPlayerDied(game_state* GameState, platform_callbacks* Callbacks) {
   }
   GameState->RestartTimer = PlayerSettings.RestartTime;
   Callbacks->PlatformPlaySound(GameState->DeathSoundHandle);
-  printf("Player died! Timer: %f\n", GameState->RestartTimer);
 }
 
 internal void
@@ -313,11 +313,22 @@ UpdatePlayer(game_state* GameState,
 
 }
 
+internal u32
+CountApples(game_state* GameState) {
+  entity_manager& EM = GameState->Entities;
+  u32 Count = 0;
+  for (auto EIter = EM.begin(); EIter != EM.end(); ++EIter) {
+    if (EIter->Kind == kind::Apple) {
+      Count += 1;
+    }
+  }
+  return Count;
+}
+
 internal void
 OnAppleCollect(entity_ref AppleRef, game_state* GameState, platform_callbacks* Callbacks) {
   entity_manager& EM = GameState->Entities;
   EM.Rem(AppleRef);
-  printf("Apple collected!\n");
   UpdateScore(GameState, Callbacks, GameState->Score + PlayerSettings.AppleScore);
   if (GameState->GameMode & (1 << (u32)game_mode::SpeedUpOnScore)) {
     GameState->PlayerSpeed += PlayerSettings.SpeedDelta;
@@ -329,6 +340,10 @@ OnAppleCollect(entity_ref AppleRef, game_state* GameState, platform_callbacks* C
     SpawnStone(GameState);
   }
   Callbacks->PlatformPlaySound(GameState->CrunchSoundHandle);
+  u32 ApplesCount = CountApples(GameState);
+  if (ApplesCount <= 0) {
+    GameState->Scene = game_scene::WinScreen;
+  }
 }
 
 internal void
@@ -487,6 +502,17 @@ UpdateWinScreen(game_state* GameState,
            game_input* Input, 
            f32 Delta) 
 {
+  if (GameState->GameMode & 1 << (u8)game_mode::NeedsRestart) {
+    printf("Game needs restart!\n");
+    entity_manager& EM = GameState->Entities;
+    entity& Player = EM.Get(GameState->PlayerRef);
+    if (Player) {
+      EM.Rem(GameState->PlayerRef);
+    }
+    GameState->RestartTimer = PlayerSettings.RestartTime;
+    GameState->Scene = game_scene::Game;
+    GameState->GameMode &= (u8)(~(1 << (u8)game_mode::NeedsRestart));
+  }
 }
 
 } // namespace apples_game
@@ -542,6 +568,9 @@ GAME_RENDER(GameRender) {
 
   DrawBackground(GameState, &Memory->PlatformCallbacks);
   DrawMenu(&GameState->GuiContext, &GameState->GameMode, &GameState->Scene);
+  if (GameState->Scene == game_scene::WinScreen) {
+    WinMenu(&GameState->GuiContext, &GameState->GameMode);
+  }
   FlushCommandStack(&GameState->CommandStack, 
                     &Memory->PlatformCallbacks, 
                     &GameState->ScratchArena);

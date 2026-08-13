@@ -95,6 +95,7 @@ enum class game_mode: u8 {
   ManyApples,
   SpeedUpOnScore,
   MenuHidden,
+  NeedsRestart,
 };
 
 enum class game_scene: u8 {

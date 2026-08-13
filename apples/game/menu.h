@@ -1,6 +1,7 @@
 #ifndef MENU_H
 
-void DrawMenu(gui::context* CTX, u8* GameMode, game_scene* Scene) {
+internal void 
+DrawMenu(gui::context* CTX, u8* GameMode, game_scene* Scene) {
   gui::GuiBegin(CTX, rect{64, 64, 128, 64});
 
   CTX->Style.BaseColor = {200, 200, 200, 20};
@@ -81,6 +82,25 @@ void DrawMenu(gui::context* CTX, u8* GameMode, game_scene* Scene) {
     };
 
   gui::PanelEnd(CTX); // Vertical Outer
+
+  gui::GuiEnd(CTX);
+}
+
+internal void 
+WinMenu(gui::context* CTX, u8* GameMode) {
+  gui::GuiBegin(CTX, rect{128, 128, 128, 64});
+
+  CTX->Style.BaseColor = {200, 200, 200, 20};
+
+  gui::PanelBegin(CTX, "PanelVerticalOuter", gui::layout::Vertical); 
+
+    gui::Label(CTX, "You won!");
+
+    if (gui::Button(CTX, "Restart")) {
+      *GameMode |= (1 << (u8)game_mode::NeedsRestart);
+    }
+
+  gui::PanelEnd(CTX);
 
   gui::GuiEnd(CTX);
 }
