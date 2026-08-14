@@ -8,13 +8,13 @@
 #include <cstddef>
 #include <ctime>
 
+#define NUM_ENTITIES 2048
+
 namespace apples_game {
 
 struct game_state {
-  arena PermArena;
-  arena ScratchArena;
   gui::context GuiContext;
-  entity_manager Entities;
+  entity_manager* Entities;
   entity_ref PlayerRef;
   draw_command _CommandBuffer[MAX_DRAW_COMMANDS];
   command_stack CommandStack;
@@ -51,8 +51,8 @@ constexpr player_settings PlayerSettings = player_settings();
 
 internal void
 CreatePlayer(game_state* GameState) {
-  GameState->PlayerRef = GameState->Entities.Add(kind::Player);
-  entity& Player = GameState->Entities.Get(GameState->PlayerRef);
+  GameState->PlayerRef = GameState->Entities->Add(kind::Player);
+  entity& Player = GameState->Entities->Get(GameState->PlayerRef);
   Player.Pos = PlayerSettings.StartPosition;
   Player.Size = PlayerSettings.Size;
   Player.Collider = PlayerSettings.Collider;
@@ -65,7 +65,7 @@ CreatePlayer(game_state* GameState) {
 internal vec2
 GetRandomPointAwayFromPlayer(game_state* GameState, f32 Radius) {
   vec2 PlayerPosition = vec2{WINDOW_WIDTH/2.f, WINDOW_HEIGHT/2.f};
-  entity& Player = GameState->Entities.Get(GameState->PlayerRef);
+  entity& Player = GameState->Entities->Get(GameState->PlayerRef);
   if (Player) {
     PlayerPosition = Player.Pos;
   }
@@ -84,8 +84,8 @@ GetRandomPointAwayFromPlayer(game_state* GameState, f32 Radius) {
 internal void
 SpawnApple(game_state* GameState) {
   vec2 ApplePosition = GetRandomPointAwayFromPlayer(GameState, 64);
-  entity_ref AppleRef = GameState->Entities.Add(kind::Apple);
-  entity& Apple = GameState->Entities.Get(AppleRef);
+  entity_ref AppleRef = GameState->Entities->Add(kind::Apple);
+  entity& Apple = GameState->Entities->Get(AppleRef);
   Apple.Pos = ApplePosition;
   Apple.Size = vec2{16.f, 16.f};
   Apple.Collider = Apple.Size;
@@ -115,9 +115,9 @@ SpawnStartingApples(game_state* GameState) {
 internal void
 SpawnStone(game_state* GameState) {
   vec2 StonePosition = GetRandomPointAwayFromPlayer(GameState, 64);
-  entity_ref StoneRef = GameState->Entities.Add(kind::Stone);
+  entity_ref StoneRef = GameState->Entities->Add(kind::Stone);
   printf("Created stone handle: %i\n", StoneRef.Idx);
-  entity& Stone = GameState->Entities.Get(StoneRef);
+  entity& Stone = GameState->Entities->Get(StoneRef);
   Stone.Pos = StonePosition;
   Stone.Size = vec2{32.f, 32.f};
   Stone.Collider = Stone.Size;
@@ -146,7 +146,7 @@ UpdateScore(game_state* GameState, platform_callbacks* Callbacks, u32 Score) {
 internal void
 GameReset(game_state* GameState, platform_callbacks* Callbacks) {
   UpdateScore(GameState, Callbacks, 0);
-  GameState->Entities = entity_manager();
+  GameState->Entities->flush();
   CreatePlayer(GameState);
   GameState->PlayerSpeed = PlayerSettings.InitialSpeed;
   srand((u32)time(NULL));
@@ -158,23 +158,25 @@ GameInit(game_state* GameState, game_memory* Memory) {
   u64 PermanentArenaSize = Memory->PermanentStorageSize - sizeof(game_state);
   void* PermanentArenaMemory = (void*)((u8*)Memory->PermanentStorage +
                                        sizeof(game_state));
-  ArenaInit(&GameState->PermArena, 
+  ArenaInit(&PermArena, 
              PermanentArenaMemory, 
              PermanentArenaSize);
-  ArenaInit(&GameState->ScratchArena,
+  ArenaInit(&ScratchArena,
              Memory->ScratchStorage,
              Memory->ScratchStorageSize);
 
   CommandStackInit(&GameState->CommandStack,
                    (void*)GameState->_CommandBuffer,
                    MAX_DRAW_COMMANDS);
+
+  GameState->Entities = new entity_manager(2048);
   
   platform_callbacks* Callbacks = &Memory->PlatformCallbacks;
 
   gui::GuiInit(&GameState->GuiContext, 
                &GameState->CommandStack, 
-               &GameState->PermArena, 
-               &GameState->ScratchArena,
+               &PermArena, 
+               &ScratchArena,
                Callbacks);
 
   if (GameState->BackgroundShaderHandle.Handle == 0) {
@@ -227,7 +229,7 @@ GameInit(game_state* GameState, game_memory* Memory) {
 internal void
 DrawBackground(game_state* GameState, platform_callbacks* Callbacks) {
   vec2 Position = vec2{-WINDOW_WIDTH/2.f, -WINDOW_HEIGHT/2.f};
-  entity& Player = GameState->Entities.Get(GameState->PlayerRef);
+  entity& Player = GameState->Entities->Get(GameState->PlayerRef);
   if (Player) {
     Position = Player.Pos;
   }
@@ -256,7 +258,7 @@ DrawText(game_state* GameState, platform_callbacks* Callbacks) {
 
 internal void
 OnPlayerDied(game_state* GameState, platform_callbacks* Callbacks) {
-  entity_manager& EM = GameState->Entities;
+  entity_manager& EM = *GameState->Entities;
   entity& Player = EM.Get(GameState->PlayerRef);
   if (Player) {
     EM.Rem(GameState->PlayerRef);
@@ -271,7 +273,7 @@ UpdatePlayer(game_state* GameState,
              game_input* Input, 
              f32 Delta) 
 {
-  entity& Player = GameState->Entities.Get(GameState->PlayerRef);
+  entity& Player = GameState->Entities->Get(GameState->PlayerRef);
   if (Player) {
     if (Input->IsKeyDown(key::D)) {
       Player.Dir = vec2{1.f, 0.f};
@@ -315,7 +317,7 @@ UpdatePlayer(game_state* GameState,
 
 internal u32
 CountApples(game_state* GameState) {
-  entity_manager& EM = GameState->Entities;
+  entity_manager& EM = *GameState->Entities;
   u32 Count = 0;
   for (auto EIter = EM.begin(); EIter != EM.end(); ++EIter) {
     if (EIter->Kind == kind::Apple) {
@@ -327,7 +329,7 @@ CountApples(game_state* GameState) {
 
 internal void
 OnAppleCollect(entity_ref AppleRef, game_state* GameState, platform_callbacks* Callbacks) {
-  entity_manager& EM = GameState->Entities;
+  entity_manager& EM = *GameState->Entities;
   EM.Rem(AppleRef);
   UpdateScore(GameState, Callbacks, GameState->Score + PlayerSettings.AppleScore);
   if (GameState->GameMode & (1 << (u32)game_mode::SpeedUpOnScore)) {
@@ -348,7 +350,7 @@ OnAppleCollect(entity_ref AppleRef, game_state* GameState, platform_callbacks* C
 
 internal void
 OnPlayerPickup(entity_ref PickupRef, game_state* GameState, platform_callbacks* Callbacks) {
-  entity_manager& EM = GameState->Entities;
+  entity_manager& EM = *GameState->Entities;
   entity& EPickup = EM.Get(PickupRef);
   if (EPickup.Kind == kind::Apple) {
     OnAppleCollect(PickupRef, GameState, Callbacks);
@@ -357,7 +359,7 @@ OnPlayerPickup(entity_ref PickupRef, game_state* GameState, platform_callbacks* 
 
 internal void
 UpdateDamagers(game_state* GameState, platform_callbacks* Callbacks) {
-  entity_manager& EM = GameState->Entities;
+  entity_manager& EM = *GameState->Entities;
   entity& Player = EM.Get(GameState->PlayerRef);
   if (!Player) {
     return;
@@ -387,7 +389,7 @@ UpdateDamagers(game_state* GameState, platform_callbacks* Callbacks) {
 
 internal void
 UpdatePickups(game_state* GameState, platform_callbacks* Callbacks) {
-  entity_manager& EM = GameState->Entities;
+  entity_manager& EM = *GameState->Entities;
   entity& Player = EM.Get(GameState->PlayerRef);
   if (!Player) {
     return;
@@ -415,7 +417,7 @@ UpdatePickups(game_state* GameState, platform_callbacks* Callbacks) {
 
 internal void
 UpdateEntityGraphics(game_state* GameState) {
-  entity_manager& EM = GameState->Entities;
+  entity_manager& EM = *GameState->Entities;
   for (const entity& E : EM) {
     if (E.Flags & (u32)entity_flags::Drawable) {
       draw_command Command = { };
@@ -461,7 +463,7 @@ UpdateSpawnAnimations(game_state* GameState,
                       platform_callbacks* Callbacks, 
                       f32 Delta) 
 {
-  entity_manager& EM = GameState->Entities;
+  entity_manager& EM = *GameState->Entities;
   for (auto E = EM.begin(); E != EM.end(); ++E) {
     if (E->Flags & (u32)entity_flags::SpawnAnimated) {
       if (E->Timer > 0.f) {
@@ -504,7 +506,7 @@ UpdateWinScreen(game_state* GameState,
 {
   if (GameState->GameMode & 1 << (u8)game_mode::NeedsRestart) {
     printf("Game needs restart!\n");
-    entity_manager& EM = GameState->Entities;
+    entity_manager& EM = *GameState->Entities;
     entity& Player = EM.Get(GameState->PlayerRef);
     if (Player) {
       EM.Rem(GameState->PlayerRef);
@@ -530,7 +532,7 @@ GAME_UPDATE(GameUpdate) {
     GameState->IsInitialized = true;
   }
 
-  ArenaFreeAll(&GameState->ScratchArena);
+  ArenaFreeAll(&ScratchArena);
 
   GuiUpdateInputState(&GameState->GuiContext, Input);
 
@@ -573,6 +575,18 @@ GAME_RENDER(GameRender) {
   }
   FlushCommandStack(&GameState->CommandStack, 
                     &Memory->PlatformCallbacks, 
-                    &GameState->ScratchArena);
+                    &ScratchArena);
   DrawText(GameState, &Memory->PlatformCallbacks);
+}
+
+#if defined __cplusplus
+extern "C"
+#endif
+GAME_RENDER(GameDestroy) {
+  if (!Memory->IsInitialized) {
+
+    Memory->IsInitialized = true;
+  }
+  game_state* GameState = (game_state*)Memory->PermanentStorage;
+  delete GameState->Entities;
 }

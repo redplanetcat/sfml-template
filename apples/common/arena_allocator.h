@@ -108,6 +108,11 @@ ArenaFreeAll(arena* A) {
     A->PrevOffset = 0;
 }
 
+internal inline void
+ArenaFree(arena* A, void* ptr) {
+
+}
+
 struct temp_arena_memory {
     arena* Arena;
     size_t PrevOffset;

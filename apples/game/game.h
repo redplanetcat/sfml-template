@@ -104,12 +104,19 @@ enum class game_scene: u8 {
   WinScreen,
 };
 
+arena PermArena;
+arena ScratchArena;
 
-#define GAME_UPDATE(name) void name(game_memory* Memory, game_input* Input, f32 Delta)
+#define GAME_UPDATE(name) void name(game_memory* Memory, \
+                                    game_input* Input, \
+                                    f32 Delta)
 typedef GAME_UPDATE(game_update_t);
 
 #define GAME_RENDER(name) void name(game_memory* Memory)
 typedef GAME_RENDER(game_render_t);
+
+#define GAME_DESTROY(name) void name(game_memory* Memory)
+typedef GAME_DESTROY(game_destroy_t);
 
 
 #define GAME_H

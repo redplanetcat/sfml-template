@@ -26,6 +26,7 @@ struct win32_game_code {
     FILETIME DLLLastWriteTime;
     game_update_t* Update;
     game_render_t* Render;
+    game_destroy_t* Destroy;
     b32 IsValid;
 };
 

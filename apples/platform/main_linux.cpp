@@ -29,7 +29,8 @@ LinuxLoadGameCode(char* SourceSOName, char* TempSOName) {
     if (Result.GameCodeSO) {
       Result.Update = (game_update_t*)dlsym(Result.GameCodeSO, "GameUpdate");
       Result.Render = (game_render_t*)dlsym(Result.GameCodeSO, "GameRender");
-      Result.IsValid = Result.Update && Result.Render;
+      Result.Destroy = (game_destroy_t*)dlsym(Result.GameCodeSO, "GameDestroy");
+      Result.IsValid = Result.Update && Result.Render && Result.Destroy;
       Result.SOLastWriteTime = LinuxGetLastWriteTime(SourceSOName);
       printf("Game dynamic library loaded successfully.\n");
     }
@@ -41,6 +42,7 @@ LinuxLoadGameCode(char* SourceSOName, char* TempSOName) {
     printf("Failed to load game dynamic library.\n");
     Result.Update = 0;
     Result.Render = 0;
+    Result.Destroy = 0;
   }
 
   return (Result);
@@ -57,6 +59,7 @@ LinuxUnloadGameCode(linux_game_code* GameCode) {
   GameCode->IsValid = false;
   GameCode->Update = 0;
   GameCode->Render = 0;
+  GameCode->Destroy = 0;
 }
 
 int
@@ -112,6 +115,9 @@ main(int argc, char** argv) {
       Game.Render(&GameMemory);
     }
     State.Window.display();
+  }
+  if (Game.Destroy) {
+    Game.Destroy(&GameMemory);
   }
   return 0;
 }

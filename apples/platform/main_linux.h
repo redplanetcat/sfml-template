@@ -18,6 +18,7 @@ struct linux_game_code {
   i64 SOLastWriteTime;
   game_update_t* Update;
   game_render_t* Render;
+  game_destroy_t* Destroy;
   b32 IsValid;
 };
 

@@ -2,8 +2,6 @@
 
 #include <vector>
 
-#define MAX_ENTITIES 2048
-
 enum class kind {
   Nil,
   Player,
@@ -53,21 +51,38 @@ struct entity {
 
 };
 
-
-
 struct entity_manager {
-  entity Entities[MAX_ENTITIES];
-  b32 Used[MAX_ENTITIES];
-  u32 Gen[MAX_ENTITIES];
+  entity* Entities;
+  b32* Used;
+  u32* Gen;
   u32 FirstFree;
-  u32 NextFree[MAX_ENTITIES];
+  u32* NextFree;
   u32 EntitiesCount;
+  u32 MaxEntities;
 
-  entity_manager() {
-    memset(Entities, 0, sizeof(Entities));
-    memset(Gen, 0, sizeof(Gen));
-    memset(Used, 0, sizeof(Used));
-    for (u32 I = 1; I < MAX_ENTITIES-1; ++I) {
+  static void* operator new(size_t size) {
+    return ArenaAlloc(&PermArena, size);
+  }
+
+  static void operator delete(void* ptr) {
+    return ArenaFree(&PermArena, ptr);
+  }
+
+  entity_manager(u32 NumEntities) {
+    Entities = (entity*)ArenaAlloc(&PermArena, sizeof(entity) * NumEntities);
+    Used = (b32*)ArenaAlloc(&PermArena, sizeof(b32) * NumEntities);
+    Gen = (u32*)ArenaAlloc(&PermArena, sizeof(u32) * NumEntities);
+    NextFree = (u32*)ArenaAlloc(&PermArena, sizeof(u32) * NumEntities);
+    MaxEntities = NumEntities;
+    flush();
+  }
+
+  void
+  flush() {
+    memset(Entities, 0, sizeof(entity) * MaxEntities);
+    memset(Gen, 0, sizeof(b32) * MaxEntities);
+    memset(Used, 0, sizeof(u32) * MaxEntities);
+    for (u32 I = 1; I < MaxEntities-1; ++I) {
       NextFree[I] = I+1;
     }
     FirstFree = 1;
@@ -98,7 +113,7 @@ struct entity_manager {
     entity_iter& 
     operator++() {
       Ref.Idx += 1;
-      while ((Ref.Idx < MAX_ENTITIES-1) && !Entities->Used[Ref.Idx]) {
+      while ((Ref.Idx < Entities->MaxEntities-1) && !Entities->Used[Ref.Idx]) {
         Ref.Idx += 1;
       }
       Ref.Gen = Entities->Gen[Ref.Idx];
@@ -167,7 +182,7 @@ struct entity_manager {
   }
 
   entity_iter end() {
-    return entity_iter(this, entity_ref{ MAX_ENTITIES-1, Gen[MAX_ENTITIES-1] });
+    return entity_iter(this, entity_ref{ MaxEntities-1, Gen[MaxEntities-1] });
   }
 
 private:
@@ -178,7 +193,7 @@ private:
 
   u32 
   deref(entity_ref Ref) {
-    if (Ref.Idx > 0 && Ref.Idx < MAX_ENTITIES 
+    if (Ref.Idx > 0 && Ref.Idx < MaxEntities 
         && Used[Ref.Idx] && Ref.Gen == Gen[Ref.Idx]) 
     {
       return Ref.Idx;

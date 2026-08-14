@@ -21,7 +21,8 @@ Win32LoadGameCode(char* SourceDLLName, char* TempDLLName) {
     if (Result.GameCodeDLL) {
         Result.Update = (game_update_t*)GetProcAddress(Result.GameCodeDLL, "GameUpdate");
         Result.Render = (game_render_t*)GetProcAddress(Result.GameCodeDLL, "GameRender");
-        Result.IsValid = Result.Update && Result.Render;
+        Result.Destroy = (game_destroy_t*)GetProcAddress(Result.GameCodeDLL, "GameDestroy");
+        Result.IsValid = Result.Update && Result.Render && Result.Destroy;
         Result.DLLLastWriteTime = Win32GetLastWriteTime(SourceDLLName);
         printf("Game dynamic library loaded successfully.\n");
     }
@@ -30,6 +31,7 @@ Win32LoadGameCode(char* SourceDLLName, char* TempDLLName) {
         printf("Failed to load game dynamic library.\n");
         Result.Update = 0;
         Result.Render = 0;
+        Result.Destroy = 0;
     }
 
     return (Result);
@@ -45,6 +47,7 @@ Win32UnloadGameCode(win32_game_code* GameCode) {
     GameCode->IsValid = false;
     GameCode->Update = 0;
     GameCode->Render = 0;
+    GameCode->Destroy = 0;
 }
 
 int main(int argc, char** argv) {
@@ -99,6 +102,9 @@ int main(int argc, char** argv) {
       Game.Render(&GameMemory);
     }
     State.Window.display();
+  }
+  if (Game.Destroy) {
+    Game.Destroy(&GameMemory);
   }
   return 0;
 }
