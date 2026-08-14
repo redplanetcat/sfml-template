@@ -1,4 +1,4 @@
-@REM @echo off
+@echo off
 
 setlocal
 
@@ -83,6 +83,7 @@ set WARNING_LINK_FLAGS=%WARNING_LINK_FLAGS% -wd4100 &:: Ignore unused function p
 set WARNING_LINK_FLAGS=%WARNING_LINK_FLAGS% -wd4189 &:: Ignore local variable not referenced
 set WARNING_LINK_FLAGS=%WARNING_LINK_FLAGS% -wd4805 &:: Ignore bool operation warnings
 set WARNING_LINK_FLAGS=%WARNING_LINK_FLAGS% -wd4127 &:: Ignore assertion conditionals warnings
+set WARNING_LINK_FLAGS=%WARNING_LINK_FLAGS% -wd4459 &:: Ignore global declaration warnings
 
 :: COMMON LINKER SWITCHES
 set WIN32_LINK=             -opt:ref              &:: Remove unused functions
@@ -91,6 +92,7 @@ set WIN32_LINK=%WIN32_LINK% -incremental:no       &:: Perform full link each tim
 :: DLL LINKER SWITCHES
 set DLL_LINK=               /EXPORT:GameRender
 set DLL_LINK=%DLL_LINK%     /EXPORT:GameUpdate
+set DLL_LINK=%DLL_LINK%     /EXPORT:GameDestroy
 
 if "%PLATFORM_SRC_CHANGED%" == "1" (
   cl %DEFINES% %FLAGS% %WARNING_LINK_FLAGS% /I"..\%SFML_INCLUDE%" -Fm:"main_win32.map" "..\%PLATFORM_SRC_DIR%\main_win32.cpp" %SFML_LINK% /link /pdb:"main_win32.pdb" /LIBPATH:"..\%SFML_LIB%" %WIN32_LINK% -subsystem:windows,5.2 /OUT:"%PLATFORM_OUT_NAME%"

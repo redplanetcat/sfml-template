@@ -582,7 +582,7 @@ GAME_RENDER(GameRender) {
 #if defined __cplusplus
 extern "C"
 #endif
-GAME_RENDER(GameDestroy) {
+GAME_DESTROY(GameDestroy) {
   if (!Memory->IsInitialized) {
 
     Memory->IsInitialized = true;
