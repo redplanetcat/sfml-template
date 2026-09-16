@@ -83,7 +83,6 @@ set WARNING_LINK_FLAGS=%WARNING_LINK_FLAGS% -wd4100 &:: Ignore unused function p
 set WARNING_LINK_FLAGS=%WARNING_LINK_FLAGS% -wd4189 &:: Ignore local variable not referenced
 set WARNING_LINK_FLAGS=%WARNING_LINK_FLAGS% -wd4805 &:: Ignore bool operation warnings
 set WARNING_LINK_FLAGS=%WARNING_LINK_FLAGS% -wd4127 &:: Ignore assertion conditionals warnings
-set WARNING_LINK_FLAGS=%WARNING_LINK_FLAGS% -wd4459 &:: Ignore global declaration warnings
 
 :: COMMON LINKER SWITCHES
 set WIN32_LINK=             -opt:ref              &:: Remove unused functions

@@ -18,6 +18,7 @@ struct game_state {
   entity_ref PlayerRef;
   draw_command _CommandBuffer[MAX_DRAW_COMMANDS];
   command_stack CommandStack;
+  hashmap HighScores;
   texture_id AppleTextureHandle;
   texture_id RockTextureHandle;
   texture_id PacmanTextureHandle;
@@ -169,7 +170,7 @@ GameInit(game_state* GameState, game_memory* Memory) {
                    (void*)GameState->_CommandBuffer,
                    MAX_DRAW_COMMANDS);
 
-  GameState->Entities = new entity_manager(2048);
+  GameState->Entities = new entity_manager(NUM_ENTITIES);
   
   platform_callbacks* Callbacks = &Memory->PlatformCallbacks;
 
@@ -178,6 +179,8 @@ GameInit(game_state* GameState, game_memory* Memory) {
                &PermArena, 
                &ScratchArena,
                Callbacks);
+
+  HashmapInit(&GameState->HighScores, 64, 64, 64, &PermArena);
 
   if (GameState->BackgroundShaderHandle.Handle == 0) {
     GameState->BackgroundShaderHandle = Callbacks->PlatformLoadShader("Resources/Shaders/background.vert", 

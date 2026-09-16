@@ -45,7 +45,7 @@ PLATFORM_LOAD_TEXTURE_FROM_MEMORY(PlatformLoadTextureFromMemory) {
   sf::Image Image;
   u8* ImageData = (u8*)TextureData;
   if (BPP < 4) {
-    ImageData = (u8*)ArenaAlloc(ScratchArena, Width * Height * 4);
+    ImageData = (u8*)ArenaAlloc(TempArena, Width * Height * 4);
     u8* TexData = (u8*)TextureData;
     for (u32 I = 0; I < Width * Height; ++I) {
       ImageData[I * 4 + 0] = TexData[I * BPP];

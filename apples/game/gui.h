@@ -1,7 +1,5 @@
 #ifndef GUI_H
 
-#include "../common/hash.h"
-
 #define MAX_GUI_CONTAINERS 2048
 #define MAX_GUI_IDS 2048
 
@@ -122,15 +120,15 @@ GetTextSize(const char* Text, u32 TextLen, font_data* FontData) {
 internal void
 GuiInit(context* CTX, 
         command_stack* CommandStack, 
-        arena* PermArena, 
-        arena* ScratchArena,
+        arena* Arena, 
+        arena* TempArena,
         platform_callbacks* Callbacks) 
 {
   CTX->NumIDs = 1;
   CTX->NumContainers = 1;
   CTX->ZBase = UINT8_MAX / 2;
   CTX->CommandStack = CommandStack;
-  CTX->FontData = LoadDefaultFont(PermArena, ScratchArena, Callbacks);
+  CTX->FontData = LoadDefaultFont(Arena, TempArena, Callbacks);
   CTX->Style = DefaultStyle;
 }
 
@@ -177,7 +175,7 @@ internal element_id
 GuiGetId(context* CTX, const void* Data, u32 Size) {
   element_id Id = {};
   Id.Id = (CTX->NumIDs > 0) ? CTX->IDs[CTX->NumIDs - 1].Id : HASH_INITIAL;
-  Hash(&Id.Id, Data, Size);
+  CalculateHash(&Id.Id, Data, Size);
   return (Id);
 }
 

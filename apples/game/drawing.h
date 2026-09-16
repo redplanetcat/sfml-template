@@ -128,7 +128,7 @@ PushVertices(vertex* VerticesDst, u32* DstNumVertices, u32 DstMaxVertices,
 internal void
 FlushCommandStack(command_stack* CommandStack, 
                   platform_callbacks* Callbacks, 
-                  arena* ScratchArena) 
+                  arena* TempArena) 
 {
   qsort(CommandStack->Buffer+1, 
         CommandStack->NumCommands-1, 
@@ -136,7 +136,7 @@ FlushCommandStack(command_stack* CommandStack,
         CompareCommands);
   texture_id Texture = { };
   shader_id Shader = { };
-  vertex* VertexBuffer = (vertex*)ArenaAlloc(ScratchArena,
+  vertex* VertexBuffer = (vertex*)ArenaAlloc(TempArena,
                                     CommandStack->BufferLength * 6 * sizeof(vertex));
   u32 NumVertices = 0;
   b32 RenderStateChanged = false;

@@ -6,6 +6,8 @@
 #include "../common/defines.h"
 #include "../common/types.h"
 #include "../common/arena_allocator.h"
+#include "../common/hash.h"
+#include "../common/hashmap.h"
 #include "../common/linalg.h"
 #include "../common/graphics.h"
 #include "../common/input.h"
@@ -24,7 +26,7 @@ typedef PLATFORM_LOAD_TEXTURE(platform_load_texture_t);
                                                                 u32 Width, \
                                                                 u32 Height, \
                                                                 u32 BPP, \
-                                                                arena* ScratchArena)
+                                                                arena* TempArena)
 typedef PLATFORM_LOAD_TEXTURE_FROM_MEMORY(platform_load_texture_from_memory_t);
 
 #define PLATFORM_USE_TEXTURE(name) void name(texture_id TextureHandle)
