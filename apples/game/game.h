@@ -5,6 +5,7 @@
 #include <cmath>
 #include "../common/defines.h"
 #include "../common/types.h"
+#include "logger.h"
 #include "../common/arena_allocator.h"
 #include "../common/hash.h"
 #include "../common/hashmap.h"
@@ -18,6 +19,12 @@
 #define PLATFORM_DRAW_VERTICES(name) void name(vertex* Vertices, u32 NumVertices, \
                                                primitive_type PrimitiveType)
 typedef PLATFORM_DRAW_VERTICES(platform_draw_vertices_t);
+
+#define PLATFORM_GET_FILE_LENGTH(name) u32 name(const char* FilePath)
+typedef PLATFORM_GET_FILE_LENGTH(platform_get_file_length_t);
+
+#define PLATFORM_READ_ENTIRE_FILE(name) void name(char* Output, const char* FilePath, u32 Length)
+typedef PLATFORM_READ_ENTIRE_FILE(platform_read_entire_file_t);
 
 #define PLATFORM_LOAD_TEXTURE(name) texture_id name(const char* TexturePath)
 typedef PLATFORM_LOAD_TEXTURE(platform_load_texture_t);
@@ -67,6 +74,9 @@ typedef PLATFORM_DRAW_TEXT(platform_draw_text_t);
 struct platform_callbacks {
   platform_draw_vertices_t* PlatformDrawVertices;
 
+  platform_get_file_length_t* PlatformGetFileLength;
+  platform_read_entire_file_t* PlatformReadEntireFile;
+
   platform_load_texture_t* PlatformLoadTexture;
   platform_load_texture_from_memory_t* PlatformLoadTextureFromMemory;
   platform_use_texture_t* PlatformUseTexture;
@@ -81,6 +91,8 @@ struct platform_callbacks {
   platform_create_text_t* PlatformCreateText;
   platform_update_text_t* PlatformUpdateText;
   platform_draw_text_t* PlatformDrawText;
+
+  log_function_t* PlatformLog;
 };
 
 struct game_memory {

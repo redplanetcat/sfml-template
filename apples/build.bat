@@ -38,13 +38,20 @@ if exist "%BUILD_DIR%\%GAME_OUT_NAME%" (
 )
 if exist "%BUILD_DIR%\%PLATFORM_OUT_NAME%" (
   for /f "delims=" %%F in ('xcopy "%COMMON_SRC_DIR%\*.cpp" "%BUILD_DIR%\%PLATFORM_OUT_NAME%" /D /L /Y 2^>nul') do (
-    echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1" || set "GAME_SRC_CHANGED=1"
+    echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1"
   )
   for /f "delims=" %%F in ('xcopy "%COMMON_SRC_DIR%\*.h" "%BUILD_DIR%\%PLATFORM_OUT_NAME%" /D /L /Y 2^>nul') do (
-    echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1" || set "GAME_SRC_CHANGED=1"
+    echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "PLATFORM_SRC_CHANGED=1"
+  )
+  for /f "delims=" %%F in ('xcopy "%COMMON_SRC_DIR%\*.cpp" "%BUILD_DIR%\%GAME_OUT_NAME%" /D /L /Y 2^>nul') do (
+    echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "GAME_SRC_CHANGED=1"
+  )
+  for /f "delims=" %%F in ('xcopy "%COMMON_SRC_DIR%\*.h" "%BUILD_DIR%\%GAME_OUT_NAME%" /D /L /Y 2^>nul') do (
+    echo %%F | findstr /R /C:"^[0-9]* File(s)" >nul || set "GAME_SRC_CHANGED=1"
   )
 ) else (
   set "PLATFORM_SRC_CHANGED=1"
+  set "GAME_SRC_CHANGED=1"
 )
 
 if "%PLATFORM_SRC_CHANGED%" == "0" if "%GAME_SRC_CHANGED%" == "0" (
@@ -93,8 +100,11 @@ set DLL_LINK=               /EXPORT:GameRender
 set DLL_LINK=%DLL_LINK%     /EXPORT:GameUpdate
 set DLL_LINK=%DLL_LINK%     /EXPORT:GameDestroy
 
+:: set SUBSYSTEM=windows,5.2
+set SUBSYSTEM=console
+
 if "%PLATFORM_SRC_CHANGED%" == "1" (
-  cl %DEFINES% %FLAGS% %WARNING_LINK_FLAGS% /I"..\%SFML_INCLUDE%" -Fm:"main_win32.map" "..\%PLATFORM_SRC_DIR%\main_win32.cpp" %SFML_LINK% /link /pdb:"main_win32.pdb" /LIBPATH:"..\%SFML_LIB%" %WIN32_LINK% -subsystem:windows,5.2 /OUT:"%PLATFORM_OUT_NAME%"
+  cl %DEFINES% %FLAGS% %WARNING_LINK_FLAGS% /I"..\%SFML_INCLUDE%" -Fm:"main_win32.map" "..\%PLATFORM_SRC_DIR%\main_win32.cpp" %SFML_LINK% /link /pdb:"main_win32.pdb" /LIBPATH:"..\%SFML_LIB%" %WIN32_LINK% -subsystem:%SUBSYSTEM% /OUT:"%PLATFORM_OUT_NAME%"
 ) else (
   echo Platform build is up to date.
 )

@@ -18,7 +18,7 @@ struct game_state {
   entity_ref PlayerRef;
   draw_command _CommandBuffer[MAX_DRAW_COMMANDS];
   command_stack CommandStack;
-  hashmap HighScores;
+  hashmap Leaderboard;
   texture_id AppleTextureHandle;
   texture_id RockTextureHandle;
   texture_id PacmanTextureHandle;
@@ -60,7 +60,7 @@ CreatePlayer(game_state* GameState) {
   Player.Color = PlayerSettings.Color;
   Player.Texture = GameState->PacmanTextureHandle;
   Player.Flags |= (u32)entity_flags::Drawable;
-  printf("Created player handle: %i with texture handle: %u [%f:%f]\n", GameState->PlayerRef.Idx, Player.Texture.Handle, Player.Texture.Width, Player.Texture.Height);
+  Log("Created player handle: %i with texture handle: %u [%f:%f]", GameState->PlayerRef.Idx, Player.Texture.Handle, Player.Texture.Width, Player.Texture.Height);
 }
 
 internal vec2
@@ -97,7 +97,7 @@ SpawnApple(game_state* GameState) {
   Apple.Flags |= (u32)entity_flags::Drawable;
   Apple.Flags |= (u32)entity_flags::Pickup;
   Apple.Flags |= (u32)entity_flags::SpawnAnimated;
-  printf("Created apple handle: %i with texture handle: %u [%f:%f]\n", AppleRef.Idx, Apple.Texture.Handle, Apple.Texture.Width, Apple.Texture.Height);
+  Log("Created apple handle: %i with texture handle: %u [%f:%f]", AppleRef.Idx, Apple.Texture.Handle, Apple.Texture.Width, Apple.Texture.Height);
 }
 
 internal void
@@ -117,7 +117,7 @@ internal void
 SpawnStone(game_state* GameState) {
   vec2 StonePosition = GetRandomPointAwayFromPlayer(GameState, 64);
   entity_ref StoneRef = GameState->Entities->Add(kind::Stone);
-  printf("Created stone handle: %i\n", StoneRef.Idx);
+  Log("Created stone handle: %i", StoneRef.Idx);
   entity& Stone = GameState->Entities->Get(StoneRef);
   Stone.Pos = StonePosition;
   Stone.Size = vec2{32.f, 32.f};
@@ -142,6 +142,19 @@ UpdateScore(game_state* GameState, platform_callbacks* Callbacks, u32 Score) {
                                 vec2{16.f, 16.f},
                                 vec2{1.f, 1.f},
                                 rect_alignment::TopLeft);
+}
+
+internal void
+LoadLeaderboardFromFile(hashmap* HighScores, 
+                        const char* FilePath, 
+                        platform_callbacks* Callbacks) {
+  u32 FileSize = Callbacks->PlatformGetFileLength(FilePath);
+  if (FileSize == 0) {
+    return;
+  }
+  char* FileBuffer = (char*)ArenaAlloc(&ScratchArena, FileSize * sizeof(char));
+  Callbacks->PlatformReadEntireFile(FileBuffer, FilePath, FileSize);
+  Log("File buffer: %s", FileBuffer);
 }
 
 internal void
@@ -173,6 +186,8 @@ GameInit(game_state* GameState, game_memory* Memory) {
   GameState->Entities = new entity_manager(NUM_ENTITIES);
   
   platform_callbacks* Callbacks = &Memory->PlatformCallbacks;
+  Log = Callbacks->PlatformLog;
+  Log("Platform callbacks loaded");
 
   gui::GuiInit(&GameState->GuiContext, 
                &GameState->CommandStack, 
@@ -180,12 +195,13 @@ GameInit(game_state* GameState, game_memory* Memory) {
                &ScratchArena,
                Callbacks);
 
-  HashmapInit(&GameState->HighScores, 64, 64, 64, &PermArena);
+  HashmapInit(&GameState->Leaderboard, 64, 64, 64, &PermArena);
+  LoadLeaderboardFromFile(&GameState->Leaderboard, "Resources/Scores.txt", Callbacks);
 
   if (GameState->BackgroundShaderHandle.Handle == 0) {
     GameState->BackgroundShaderHandle = Callbacks->PlatformLoadShader("Resources/Shaders/background.vert", 
                                                                       "Resources/Shaders/background.frag");
-    printf("Background shader handle: %u\n", GameState->BackgroundShaderHandle.Handle);
+    Log("Background shader handle: %u", GameState->BackgroundShaderHandle.Handle);
   }
   if (GameState->ScoreTextHandle.Handle == 0) {
     GameState->ScoreTextHandle = Callbacks->PlatformCreateText("Score: 0", 16,
@@ -209,23 +225,23 @@ GameInit(game_state* GameState, game_memory* Memory) {
   }
   if (GameState->AppleTextureHandle.Handle == 0) {
     GameState->AppleTextureHandle = Callbacks->PlatformLoadTexture("Resources/Textures/Apple.png");
-    printf("Apple texture handle: %u\n", GameState->AppleTextureHandle.Handle);
+    Log("Apple texture handle: %u", GameState->AppleTextureHandle.Handle);
   }
   if (GameState->RockTextureHandle.Handle == 0) {
     GameState->RockTextureHandle = Callbacks->PlatformLoadTexture("Resources/Textures/Rock.png");
-    printf("Rock texture handle: %u\n", GameState->RockTextureHandle.Handle);
+    Log("Rock texture handle: %u", GameState->RockTextureHandle.Handle);
   }
   if (GameState->PacmanTextureHandle.Handle == 0) {
     GameState->PacmanTextureHandle = Callbacks->PlatformLoadTexture("Resources/Textures/Pacman.png");
-    printf("Pacman texture handle: %u\n", GameState->PacmanTextureHandle.Handle);
+    Log("Pacman texture handle: %u", GameState->PacmanTextureHandle.Handle);
   }
   if (GameState->CrunchSoundHandle.Handle == 0) {
     GameState->CrunchSoundHandle = Callbacks->PlatformLoadSound("Resources/Sounds/Crunch.ogg");
-    printf("Crunch sound handle: %u\n", GameState->CrunchSoundHandle.Handle);
+    Log("Crunch sound handle: %u", GameState->CrunchSoundHandle.Handle);
   }
   if (GameState->DeathSoundHandle.Handle == 0) {
     GameState->DeathSoundHandle = Callbacks->PlatformLoadSound("Resources/Sounds/Death.ogg");
-    printf("Death sound handle: %u\n", GameState->DeathSoundHandle.Handle);
+    Log("Death sound handle: %u", GameState->DeathSoundHandle.Handle);
   }
 }
 
@@ -309,7 +325,7 @@ UpdatePlayer(game_state* GameState,
       WINDOW_HEIGHT
     };
     if (!LevelRect.Contains(PlayerRect)) {
-      printf("Out of bounds death!\n");
+      Log("Out of bounds death!");
       OnPlayerDied(GameState, Callbacks);
     }
   } else if (GameState->RestartTimer <= 0.f) {
@@ -382,7 +398,7 @@ UpdateDamagers(game_state* GameState, platform_callbacks* Callbacks) {
         EIter->Collider.y
       };
       if (PlayerRect.Overlaps(StoneRect)) {
-        printf("Stoned death!\n");
+        Log("Stoned death!");
         OnPlayerDied(GameState, Callbacks);
       }
     }
@@ -508,7 +524,7 @@ UpdateWinScreen(game_state* GameState,
            f32 Delta) 
 {
   if (GameState->GameMode & 1 << (u8)game_mode::NeedsRestart) {
-    printf("Game needs restart!\n");
+    Log("Game needs restart!");
     entity_manager& EM = *GameState->Entities;
     entity& Player = EM.Get(GameState->PlayerRef);
     if (Player) {
@@ -530,7 +546,6 @@ extern "C"
 GAME_UPDATE(GameUpdate) {
   game_state* GameState = (game_state*)Memory->PermanentStorage;
   if (!GameState->IsInitialized) {
-    printf("GameState is uninitialized, calling init function.\n");
     GameInit(GameState, Memory);
     GameState->IsInitialized = true;
   }

@@ -175,9 +175,21 @@ PLATFORM_DRAW_TEXT(PlatformDrawText) {
   GetPlatformState().Window.draw(Text);
 }
 
+PLATFORM_LOG_FUNCTION(PlatformLog) {
+  printf("LOG: ");
+  va_list Args;
+  va_start(Args, Format);
+  vprintf(Format, Args);
+  va_end(Args);
+  printf("\n");
+}
+
 void
 AssignPlatformCallbacks(game_memory* Memory) {
   Memory->PlatformCallbacks.PlatformDrawVertices = PlatformDrawVertices;
+
+  Memory->PlatformCallbacks.PlatformGetFileLength = PlatformGetFileLength;
+  Memory->PlatformCallbacks.PlatformReadEntireFile = PlatformReadEntireFile;
 
   Memory->PlatformCallbacks.PlatformLoadTexture = PlatformLoadTexture;
   Memory->PlatformCallbacks.PlatformLoadTextureFromMemory = PlatformLoadTextureFromMemory;
@@ -193,4 +205,6 @@ AssignPlatformCallbacks(game_memory* Memory) {
   Memory->PlatformCallbacks.PlatformCreateText = PlatformCreateText;
   Memory->PlatformCallbacks.PlatformUpdateText = PlatformUpdateText;
   Memory->PlatformCallbacks.PlatformDrawText = PlatformDrawText;
+
+  Memory->PlatformCallbacks.PlatformLog = PlatformLog;
 }

@@ -33,6 +33,76 @@ Win32BuildExecutablePathFilename(win32_state* State, const char* Filename,
                DestCount, Dest);
 }
 
+PLATFORM_GET_FILE_LENGTH(PlatformGetFileLength) {
+  char FullPath[PLATFORM_FILENAME_COUNT];
+  Win32BuildExecutablePathFilename(&Win32State, FilePath,
+                                   sizeof(FullPath), FullPath);
+  HANDLE FileHandle = CreateFile(
+    FullPath,
+    GENERIC_READ,
+    FILE_SHARE_READ,
+    NULL,
+    OPEN_EXISTING,
+    FILE_ATTRIBUTE_NORMAL,
+    NULL
+  );
+
+  if (FileHandle == INVALID_HANDLE_VALUE) {
+    printf("Failed to get file handle: %s\n", FullPath);
+    return 0;
+  }
+
+  DWORD FileSizeLow = GetFileSize(FileHandle, 0);
+  
+  if (FileSizeLow == INVALID_FILE_SIZE && GetLastError() != NO_ERROR) {
+    CloseHandle(FileHandle);
+    return 0;
+  }
+
+  CloseHandle(FileHandle);
+
+  return ((u32)FileSizeLow);
+}
+
+PLATFORM_READ_ENTIRE_FILE(PlatformReadEntireFile) {
+  char FullPath[PLATFORM_FILENAME_COUNT];
+  Win32BuildExecutablePathFilename(&Win32State, FilePath,
+                                   sizeof(FullPath), FullPath);
+
+  HANDLE FileHandle = CreateFile(
+    FullPath,
+    GENERIC_READ,
+    FILE_SHARE_READ,
+    NULL,
+    OPEN_EXISTING,
+    FILE_ATTRIBUTE_NORMAL,
+    NULL
+  );
+
+  if (FileHandle == INVALID_HANDLE_VALUE) {
+    printf("Failed to get file handle: %s\n", FullPath);
+    return;
+  }
+
+  DWORD BytesRead = 0;
+  BOOL result = ReadFile(
+    FileHandle,
+    Output,
+    Length,
+    &BytesRead,
+    NULL
+  );
+
+  if (!result) {
+    CloseHandle(FileHandle);
+    printf("Failed to read file: %s, %u\n", FullPath, GetLastError());
+    return;
+  }
+
+  CloseHandle(FileHandle);
+  return;
+}
+
 PLATFORM_LOAD_TEXTURE(PlatformLoadTexture) {
   texture_id TextureID = { };
   if (GetPlatformState().TexturesCount >= MAX_TEXTURES) {

@@ -54,5 +54,6 @@ platform_state& GetPlatformState() {
   return State;
 }
 
+
 #define PLATFORM_COMMON_H
 #endif

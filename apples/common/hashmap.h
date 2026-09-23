@@ -33,7 +33,6 @@ HashmapInit(
 ) {
     memset(Map, 0, sizeof(struct hashmap));
     Map->N = NumElements;
-    printf("[%s:%i] creating hashmap with [%u] elements", __FILE__, __LINE__, NumElements);
     Map->Size = ElementSize;
     Map->KeySize = KeySize;
     Map->BufIndex = 0;
@@ -54,7 +53,7 @@ HashmapEmplaceByHash(struct hashmap* Map, const void* Key, u32 Len, u32 Hash) {
     u32 HashedKey = Hash % Map->N;
     Len = Len > Map->KeySize ? Map->KeySize : Len;
     if (Map->BufIndex >= Map->N) {
-        printf("Error: Exceeded hashmap capacity! %i > %i\n", Map->BufIndex, Map->N);
+        Log("Error: Exceeded hashmap capacity! %i > %i", Map->BufIndex, Map->N);
         return NULL;
     }
     void* Result = NULL;
@@ -112,7 +111,7 @@ HashmapInsertByHash(struct hashmap* Map, const void* Key, u32 Len, u32 Hash, con
     u32 HashedKey = Hash % Map->N;
     Len = Len > Map->KeySize ? Map->KeySize : Len;
     if (Map->BufIndex >= Map->N) {
-        printf("Exceeded hashmap capacity! %i > %i\n", Map->BufIndex, Map->N);
+        Log("Exceeded hashmap capacity! %i > %i", Map->BufIndex, Map->N);
         return NULL;
     }
     void* Result = NULL;
