@@ -148,7 +148,7 @@ HashmapInsertByHash(struct hashmap* Map, const void* Key, u32 Len, u32 Hash, con
     (*NextNode)->Value = ArenaAlloc(Map->Arena, Map->Size);
     memset((*NextNode)->Value, 0, Map->Size);
     Result = (*NextNode)->Value;
-    memcpy(Result, 0, Map->Size);
+    memset(Result, 0, Map->Size);
     memcpy(Map->Keys+IterIdx*Map->KeySize, Key, Len);
     Map->IterBuffer[IterIdx] = *NextNode;
     return (Result);

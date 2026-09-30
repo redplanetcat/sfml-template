@@ -73,6 +73,53 @@ LinuxBuildExecutablePathFilename(linux_state* State, const char* Filename,
              DestCount, Dest);
 }
 
+PLATFORM_GET_FILE_LENGTH(PlatformGetFileLength) {
+  char FullPath[PLATFORM_FILENAME_COUNT];
+  LinuxBuildExecutablePathFilename(&LinuxState, FilePath,
+                                   sizeof(FullPath), FullPath);
+
+  i32 InputFD = open(FullPath, O_RDONLY);
+  if (InputFD < 0) return 0;
+
+  struct stat StatBuf;
+  if (fstat(InputFD, &StatBuf) < 0) {
+    close(InputFD);
+    return 0;
+  }
+
+  close(InputFD);
+
+  off_t FileSize = StatBuf.st_size;
+  return ((u32)FileSize + 1);
+}
+
+PLATFORM_READ_ENTIRE_FILE(PlatformReadEntireFile) {
+  char FullPath[PLATFORM_FILENAME_COUNT];
+  LinuxBuildExecutablePathFilename(&LinuxState, FilePath,
+                                   sizeof(FullPath), FullPath);
+
+  i32 InputFD = open(FullPath, O_RDONLY);
+  if (InputFD < 0) return;
+
+  size_t TotalBytesRead = 0;
+  while (TotalBytesRead < Length) {
+    ssize_t BytesRead = read(InputFD, Output + TotalBytesRead, Length - TotalBytesRead);
+    if (BytesRead < 0) {
+      perror("Error reading file");
+      close(InputFD);
+      return;
+    }
+    if (BytesRead <= 0) {
+      break;
+    }
+    TotalBytesRead += (size_t)BytesRead;
+  }
+
+  Output[TotalBytesRead] = '\0';
+
+  close(InputFD);
+}
+
 PLATFORM_LOAD_TEXTURE(PlatformLoadTexture) {
   texture_id TextureID = { };
   if (GetPlatformState().TexturesCount >= MAX_TEXTURES) {

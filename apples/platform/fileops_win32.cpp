@@ -61,7 +61,7 @@ PLATFORM_GET_FILE_LENGTH(PlatformGetFileLength) {
 
   CloseHandle(FileHandle);
 
-  return ((u32)FileSizeLow);
+  return ((u32)FileSizeLow + 1);
 }
 
 PLATFORM_READ_ENTIRE_FILE(PlatformReadEntireFile) {
@@ -98,6 +98,8 @@ PLATFORM_READ_ENTIRE_FILE(PlatformReadEntireFile) {
     printf("Failed to read file: %s, %u\n", FullPath, GetLastError());
     return;
   }
+
+  Output[BytesRead] = '\0';
 
   CloseHandle(FileHandle);
   return;

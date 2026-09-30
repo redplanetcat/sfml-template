@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <cstdio>
+#include <cstdarg>
 #include <cmath>
 #include "../common/defines.h"
 #include "../common/types.h"
