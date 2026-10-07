@@ -154,7 +154,33 @@ LoadLeaderboardFromFile(hashmap* HighScores,
   }
   char* FileBuffer = (char*)ArenaAlloc(&ScratchArena, FileSize * sizeof(char));
   Callbacks->PlatformReadEntireFile(FileBuffer, FilePath, FileSize);
-  Log("File buffer: %s", FileBuffer);
+  char LineCopy[512];
+  memset(LineCopy, 0, 512);
+  char* NextLine = strpbrk(FileBuffer, "\n\0;");
+  memcpy(LineCopy, FileBuffer, NextLine - FileBuffer);
+  while (NextLine != NULL) {
+    size_t LineLen = strnlen(LineCopy, 512);
+    if (LineCopy[LineLen-1] == '\r') {
+      LineCopy[LineLen-1] = '\0';
+      LineLen--;
+    }
+    char* Rest = LineCopy;
+    strtok_s(LineCopy, ":", &Rest);
+    size_t NameLen = strnlen(LineCopy, 512);
+    //printf("LineCopy: %s", LineCopy);
+    u32 Value = strtoul(Rest, NULL, 10);
+    //printf("  value: %u\n", Value);
+    HashmapInsert(HighScores, (const void*)LineCopy, (u32)NameLen, (const void*)&Value);
+    char* OldLine = NextLine + 1;
+    NextLine = strpbrk(NextLine + 1, "\n\0;");
+    if (NextLine >= FileBuffer + FileSize) {
+      break;
+    }
+    if (NextLine != NULL) {
+      memset(LineCopy, 0, 512);
+      memcpy(LineCopy, OldLine, NextLine - OldLine);
+    }
+  }
 }
 
 internal void
@@ -195,7 +221,7 @@ GameInit(game_state* GameState, game_memory* Memory) {
                &ScratchArena,
                Callbacks);
 
-  HashmapInit(&GameState->Leaderboard, 64, 64, 64, &PermArena);
+  HashmapInit(&GameState->Leaderboard, 64, sizeof(u32), 64, &PermArena);
   LoadLeaderboardFromFile(&GameState->Leaderboard, "Resources/Scores.txt", Callbacks);
 
   if (GameState->BackgroundShaderHandle.Handle == 0) {
@@ -587,7 +613,8 @@ GAME_RENDER(GameRender) {
   game_state* GameState = (game_state*)Memory->PermanentStorage;
 
   DrawBackground(GameState, &Memory->PlatformCallbacks);
-  DrawMenu(&GameState->GuiContext, &GameState->GameMode, &GameState->Scene);
+  DrawMenu(&GameState->GuiContext, &GameState->GameMode, 
+           &GameState->Scene, &GameState->Leaderboard);
   if (GameState->Scene == game_scene::WinScreen) {
     WinMenu(&GameState->GuiContext, &GameState->GameMode);
   }

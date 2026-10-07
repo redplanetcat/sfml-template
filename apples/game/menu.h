@@ -1,7 +1,7 @@
 #ifndef MENU_H
 
 internal void 
-DrawMenu(gui::context* CTX, u8* GameMode, game_scene* Scene) {
+DrawMenu(gui::context* CTX, u8* GameMode, game_scene* Scene, hashmap* HighScores) {
   gui::GuiBegin(CTX, rect{64, 64, 128, 64});
 
   CTX->Style.BaseColor = {200, 200, 200, 20};
@@ -67,19 +67,24 @@ DrawMenu(gui::context* CTX, u8* GameMode, game_scene* Scene) {
 
     gui::PanelEnd(CTX); // PanelHorizontal
 
-    //gui::PanelBegin(CTX, "PanelStartGame");
+    gui::PanelBegin(CTX, "PanelScores", gui::layout::Vertical);
 
-      if (gui::Button(CTX, "Start Game!")) {
-        *Scene = game_scene::Game;
-        *GameMode |= (1 << (u8)game_mode::MenuHidden);
-      }
+    struct hashmap_node* ScoreNode = NULL;
+    u32 ScoreIndex = 0;
+    while (HashmapIterNodes(HighScores, &ScoreIndex, &ScoreNode)) {
+      char ScoreBuf[256];
+      char* ScoreName = &HighScores->Keys[HighScores->KeySize * ScoreNode->KeyIdx];
+      snprintf(ScoreBuf, 256, "%s: %u", ScoreName, *((u32*)ScoreNode->Value));
+      gui::Label(CTX, ScoreBuf);
+    }
 
-    //gui::PanelEnd(CTX); // StartGamePanel
+    gui::PanelEnd(CTX); // PanelScores
 
-    gui::Image(CTX, nullptr);
-    if (gui::ImageButton(CTX, nullptr)) {
+    if (gui::Button(CTX, "Start Game!")) {
+      *Scene = game_scene::Game;
+      *GameMode |= (1 << (u8)game_mode::MenuHidden);
+    }
 
-    };
 
   gui::PanelEnd(CTX); // Vertical Outer
 
