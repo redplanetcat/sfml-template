@@ -4,6 +4,10 @@
 #define local_persist static
 #define global static
 
+#if PLATFORM_WINDOWS
+#define strtok_r strtok_s
+#endif
+
 #define Kilobytes(Value) ((Value) * 1024LL)
 #define Megabytes(Value) (Kilobytes(Value) * 1024LL)
 #define Gigabytes(Value) (Megabytes(Value) * 1024LL)
@@ -15,6 +19,9 @@
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+#define SWAP(a, b, type) type _Temp = *(a); *(a) = *(b); *(b) = _Temp;
+
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(byte) \

@@ -144,6 +144,19 @@ UpdateScore(game_state* GameState, platform_callbacks* Callbacks, u32 Score) {
                                 rect_alignment::TopLeft);
 }
 
+COMPARE_FUNCTION(ScoreCompare) {
+  hashmap_node* NodeA = *(hashmap_node**)A;
+  hashmap_node* NodeB = *(hashmap_node**)B;
+  u32 ValueA = *(u32*)NodeA->Value;
+  u32 ValueB = *(u32*)NodeB->Value;
+  return ((i32)ValueB - (i32)ValueA);
+}
+
+internal void
+SortLeaderboard(hashmap* HighScores) {
+  HashmapSort(HighScores, QuickSort, ScoreCompare);
+}
+
 internal void
 LoadLeaderboardFromFile(hashmap* HighScores, 
                         const char* FilePath, 
@@ -157,7 +170,7 @@ LoadLeaderboardFromFile(hashmap* HighScores,
   char LineCopy[512];
   memset(LineCopy, 0, 512);
   char* NextLine = strpbrk(FileBuffer, "\n\0;");
-  memcpy(LineCopy, FileBuffer, NextLine - FileBuffer);
+  memcpy(LineCopy, FileBuffer, (uintptr_t)(NextLine - FileBuffer));
   while (NextLine != NULL) {
     size_t LineLen = strnlen(LineCopy, 512);
     if (LineCopy[LineLen-1] == '\r') {
@@ -165,10 +178,10 @@ LoadLeaderboardFromFile(hashmap* HighScores,
       LineLen--;
     }
     char* Rest = LineCopy;
-    strtok_s(LineCopy, ":", &Rest);
+    strtok_r(LineCopy, ":", &Rest);
     size_t NameLen = strnlen(LineCopy, 512);
     //printf("LineCopy: %s", LineCopy);
-    u32 Value = strtoul(Rest, NULL, 10);
+    u32 Value = (u32)strtoul(Rest, NULL, 10);
     //printf("  value: %u\n", Value);
     HashmapInsert(HighScores, (const void*)LineCopy, (u32)NameLen, (const void*)&Value);
     char* OldLine = NextLine + 1;
@@ -178,9 +191,11 @@ LoadLeaderboardFromFile(hashmap* HighScores,
     }
     if (NextLine != NULL) {
       memset(LineCopy, 0, 512);
-      memcpy(LineCopy, OldLine, NextLine - OldLine);
+      memcpy(LineCopy, OldLine, (uintptr_t)(NextLine - OldLine));
     }
   }
+
+  SortLeaderboard(HighScores);
 }
 
 internal void

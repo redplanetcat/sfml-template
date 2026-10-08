@@ -4,10 +4,14 @@
 #include <cstdio>
 #include <cstdarg>
 #include <cmath>
-#include "../common/defines.h"
 #include "../common/types.h"
+#include "../common/defines.h"
 #include "logger.h"
 #include "../common/arena_allocator.h"
+arena PermArena;
+arena ScratchArena;
+
+#include "../common/sort.h"
 #include "../common/hash.h"
 #include "../common/hashmap.h"
 #include "../common/linalg.h"
@@ -16,6 +20,7 @@
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
+
 
 #define PLATFORM_DRAW_VERTICES(name) void name(vertex* Vertices, u32 NumVertices, \
                                                primitive_type PrimitiveType)
@@ -119,8 +124,6 @@ enum class game_scene: u8 {
   WinScreen,
 };
 
-arena PermArena;
-arena ScratchArena;
 
 #define GAME_UPDATE(name) void name(game_memory* Memory, \
                                     game_input* Input, \

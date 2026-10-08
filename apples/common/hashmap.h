@@ -234,6 +234,11 @@ HashmapIterNodes(struct hashmap* Map, u32* Index, struct hashmap_node** Item) {
     return true;
 }
 
+void
+HashmapSort(struct hashmap* Map, sort_function_t* SortFunction, compare_function_t* CompareFunction) {
+  SortFunction(Map->IterBuffer, Map->IterBufIndex, sizeof(hashmap_node*), CompareFunction);
+}
+
 #ifdef __cplusplus
 }
 #endif
