@@ -6,6 +6,5 @@ apples/ApplesGame/x64/
 imgui.ini
 /setup_env.sh
 *.exp
-*.lib
 *.obj
 *.gf

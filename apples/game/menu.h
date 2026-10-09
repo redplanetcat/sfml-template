@@ -1,4 +1,15 @@
 #ifndef MENU_H
+internal void
+DrawHighScores(gui::context* CTX, hashmap* HighScores) {
+  struct hashmap_node* ScoreNode = NULL;
+  u32 ScoreIndex = 0;
+  while (HashmapIterNodes(HighScores, &ScoreIndex, &ScoreNode)) {
+    char ScoreBuf[256];
+    char* ScoreName = &HighScores->Keys[HighScores->KeySize * ScoreNode->KeyIdx];
+    snprintf(ScoreBuf, 256, "%s: %u", ScoreName, *((u32*)ScoreNode->Value));
+    gui::Label(CTX, ScoreBuf);
+  }
+}
 
 internal void 
 DrawMenu(gui::context* CTX, u8* GameMode, game_scene* Scene, hashmap* HighScores) {
@@ -67,26 +78,17 @@ DrawMenu(gui::context* CTX, u8* GameMode, game_scene* Scene, hashmap* HighScores
 
     gui::PanelEnd(CTX); // PanelHorizontal
 
-    gui::PanelBegin(CTX, "PanelScores", gui::layout::Vertical);
-
-    struct hashmap_node* ScoreNode = NULL;
-    u32 ScoreIndex = 0;
-    while (HashmapIterNodes(HighScores, &ScoreIndex, &ScoreNode)) {
-      char ScoreBuf[256];
-      char* ScoreName = &HighScores->Keys[HighScores->KeySize * ScoreNode->KeyIdx];
-      snprintf(ScoreBuf, 256, "%s: %u", ScoreName, *((u32*)ScoreNode->Value));
-      gui::Label(CTX, ScoreBuf);
-    }
-
-    gui::PanelEnd(CTX); // PanelScores
-
-    local_persist char NameBuffer[64];
-    gui::InputText(CTX, NameBuffer, 64);
 
     if (gui::Button(CTX, "Start Game!")) {
       *Scene = game_scene::Game;
       *GameMode |= (1 << (u8)game_mode::MenuHidden);
     }
+    
+    gui::PanelBegin(CTX, "PanelScores", gui::layout::Vertical);
+
+      DrawHighScores(CTX, HighScores);
+
+    gui::PanelEnd(CTX); // PanelScores
 
 
   gui::PanelEnd(CTX); // Vertical Outer
@@ -95,7 +97,8 @@ DrawMenu(gui::context* CTX, u8* GameMode, game_scene* Scene, hashmap* HighScores
 }
 
 internal void 
-WinMenu(gui::context* CTX, u8* GameMode) {
+WinMenu(gui::context* CTX, u8* GameMode, hashmap* HighScores, 
+        u32 PlayerScore, b32* ScoreSubmitted, platform_callbacks* Callbacks) {
   gui::GuiBegin(CTX, rect{128, 128, 128, 64});
 
   CTX->Style.BaseColor = {200, 200, 200, 20};
@@ -103,6 +106,32 @@ WinMenu(gui::context* CTX, u8* GameMode) {
   gui::PanelBegin(CTX, "PanelVerticalOuter", gui::layout::Vertical); 
 
     gui::Label(CTX, "You won!");
+
+    if (!*ScoreSubmitted) {
+      local_persist char NameBuffer[64] = "Player";
+
+      gui::PanelBegin(CTX, "PanelNameInput", gui::layout::Horizontal);
+
+        gui::InputText(CTX, NameBuffer, 64);
+
+        if (gui::Button(CTX, "Submit")) {
+          HashmapInsert(HighScores, (const void*)NameBuffer, 
+                        (u32)strnlen(NameBuffer, 64), 
+                        (const void*)&PlayerScore);
+          SortLeaderboard(HighScores);
+          SaveLeaderboardToFile(HighScores, "Resources/Scores.txt", Callbacks);
+          *ScoreSubmitted = true;
+        }
+
+      gui::PanelEnd(CTX); // PanelNameInput
+    }
+    
+    gui::PanelBegin(CTX, "PanelScores", gui::layout::Vertical);
+
+      DrawHighScores(CTX, HighScores);
+
+    gui::PanelEnd(CTX); // PanelScores
+
 
     if (gui::Button(CTX, "Restart")) {
       *GameMode |= (1 << (u8)game_mode::NeedsRestart);

@@ -194,6 +194,7 @@ AssignPlatformCallbacks(game_memory* Memory) {
 
   Memory->PlatformCallbacks.PlatformGetFileLength = PlatformGetFileLength;
   Memory->PlatformCallbacks.PlatformReadEntireFile = PlatformReadEntireFile;
+  Memory->PlatformCallbacks.PlatformWriteToFile = PlatformWriteToFile;
 
   Memory->PlatformCallbacks.PlatformLoadTexture = PlatformLoadTexture;
   Memory->PlatformCallbacks.PlatformLoadTextureFromMemory = PlatformLoadTextureFromMemory;

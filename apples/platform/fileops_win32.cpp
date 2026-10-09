@@ -85,7 +85,7 @@ PLATFORM_READ_ENTIRE_FILE(PlatformReadEntireFile) {
   }
 
   DWORD BytesRead = 0;
-  BOOL result = ReadFile(
+  BOOL Result = ReadFile(
     FileHandle,
     Output,
     Length,
@@ -93,7 +93,7 @@ PLATFORM_READ_ENTIRE_FILE(PlatformReadEntireFile) {
     NULL
   );
 
-  if (!result) {
+  if (!Result) {
     CloseHandle(FileHandle);
     printf("Failed to read file: %s, %u\n", FullPath, GetLastError());
     return;
@@ -103,6 +103,47 @@ PLATFORM_READ_ENTIRE_FILE(PlatformReadEntireFile) {
 
   CloseHandle(FileHandle);
   return;
+}
+
+PLATFORM_WRITE_TO_FILE(PlatformWriteToFile) {
+  char FullPath[PLATFORM_FILENAME_COUNT];
+  Win32BuildExecutablePathFilename(&Win32State, FilePath,
+                                   sizeof(FullPath), FullPath);
+
+  HANDLE FileHandle = CreateFile(
+    FullPath,
+    GENERIC_WRITE,
+    0,
+    NULL,
+    CREATE_ALWAYS,
+    FILE_ATTRIBUTE_NORMAL,
+    NULL
+  );
+
+  if (FileHandle == INVALID_HANDLE_VALUE) {
+    printf("Failed to get file handle: %s\n", FullPath);
+    return;
+  }
+
+  DWORD BytesWritten = 0;
+
+  BOOL Result = WriteFile(
+    FileHandle,
+    Input,
+    Length - 1,
+    &BytesWritten,
+    NULL
+  );
+
+  if (!Result) {
+    CloseHandle(FileHandle);
+    printf("Failed to write to file: %s, %u\n", FullPath, GetLastError());
+    return;
+  } else {
+    printf("Successfully written %lu bytes.\n", BytesWritten);
+  }
+
+  CloseHandle(FileHandle);
 }
 
 PLATFORM_LOAD_TEXTURE(PlatformLoadTexture) {

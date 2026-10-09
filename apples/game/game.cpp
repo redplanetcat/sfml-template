@@ -3,6 +3,7 @@
 #include "default_font.h"
 #include "font.h"
 #include "drawing.h"
+#include "scores.h"
 #include "gui.h"
 #include "menu.h"
 #include <cstddef>
@@ -30,6 +31,7 @@ struct game_state {
   f32 RestartTimer;
   f32 PlayerSpeed;
   u32 Score;
+  b32 ScoreSubmitted;
   b32 IsInitialized;
   u8 GameMode;
   game_scene Scene;
@@ -44,7 +46,7 @@ struct player_settings {
   vec2 StartPosition = vec2{ WINDOW_WIDTH/2.f, WINDOW_HEIGHT/2.f };
   f32 RestartTime = 3.f;
   i32 AppleScore = 100;
-  u32 NumStartingApplesA = 20;
+  u32 NumStartingApplesA = 2;
   u32 NumStartingApplesB = 50;
 };
 
@@ -108,7 +110,7 @@ SpawnStartingApples(game_state* GameState) {
   u32 MinApplesToSpawn = MaxApplesToSpawn / 2;
   u32 ApplesToSpawn = (u32)(((f32)rand() / (f32)RAND_MAX) *
               ((f32)MaxApplesToSpawn-(f32)MinApplesToSpawn) + (f32)MinApplesToSpawn);
-  for (u32 I = 0; I < ApplesToSpawn; I++) {
+  for (u32 I = 0; I <= ApplesToSpawn; I++) {
     SpawnApple(GameState);
   }
 }
@@ -144,63 +146,11 @@ UpdateScore(game_state* GameState, platform_callbacks* Callbacks, u32 Score) {
                                 rect_alignment::TopLeft);
 }
 
-COMPARE_FUNCTION(ScoreCompare) {
-  hashmap_node* NodeA = *(hashmap_node**)A;
-  hashmap_node* NodeB = *(hashmap_node**)B;
-  u32 ValueA = *(u32*)NodeA->Value;
-  u32 ValueB = *(u32*)NodeB->Value;
-  return ((i32)ValueB - (i32)ValueA);
-}
-
-internal void
-SortLeaderboard(hashmap* HighScores) {
-  HashmapSort(HighScores, QuickSort, ScoreCompare);
-}
-
-internal void
-LoadLeaderboardFromFile(hashmap* HighScores, 
-                        const char* FilePath, 
-                        platform_callbacks* Callbacks) {
-  u32 FileSize = Callbacks->PlatformGetFileLength(FilePath);
-  if (FileSize == 0) {
-    return;
-  }
-  char* FileBuffer = (char*)ArenaAlloc(&ScratchArena, FileSize * sizeof(char));
-  Callbacks->PlatformReadEntireFile(FileBuffer, FilePath, FileSize);
-  char LineCopy[512];
-  memset(LineCopy, 0, 512);
-  char* NextLine = strpbrk(FileBuffer, "\n\0;");
-  memcpy(LineCopy, FileBuffer, (uintptr_t)(NextLine - FileBuffer));
-  while (NextLine != NULL) {
-    size_t LineLen = strnlen(LineCopy, 512);
-    if (LineCopy[LineLen-1] == '\r') {
-      LineCopy[LineLen-1] = '\0';
-      LineLen--;
-    }
-    char* Rest = LineCopy;
-    strtok_r(LineCopy, ":", &Rest);
-    size_t NameLen = strnlen(LineCopy, 512);
-    //printf("LineCopy: %s", LineCopy);
-    u32 Value = (u32)strtoul(Rest, NULL, 10);
-    //printf("  value: %u\n", Value);
-    HashmapInsert(HighScores, (const void*)LineCopy, (u32)NameLen, (const void*)&Value);
-    char* OldLine = NextLine + 1;
-    NextLine = strpbrk(NextLine + 1, "\n\0;");
-    if (NextLine >= FileBuffer + FileSize) {
-      break;
-    }
-    if (NextLine != NULL) {
-      memset(LineCopy, 0, 512);
-      memcpy(LineCopy, OldLine, (uintptr_t)(NextLine - OldLine));
-    }
-  }
-
-  SortLeaderboard(HighScores);
-}
 
 internal void
 GameReset(game_state* GameState, platform_callbacks* Callbacks) {
   UpdateScore(GameState, Callbacks, 0);
+  GameState->ScoreSubmitted = false;
   GameState->Entities->flush();
   CreatePlayer(GameState);
   GameState->PlayerSpeed = PlayerSettings.InitialSpeed;
@@ -628,10 +578,17 @@ GAME_RENDER(GameRender) {
   game_state* GameState = (game_state*)Memory->PermanentStorage;
 
   DrawBackground(GameState, &Memory->PlatformCallbacks);
-  DrawMenu(&GameState->GuiContext, &GameState->GameMode, 
-           &GameState->Scene, &GameState->Leaderboard);
+  DrawMenu(&GameState->GuiContext, 
+           &GameState->GameMode, 
+           &GameState->Scene,
+           &GameState->Leaderboard);
   if (GameState->Scene == game_scene::WinScreen) {
-    WinMenu(&GameState->GuiContext, &GameState->GameMode);
+    WinMenu(&GameState->GuiContext, 
+            &GameState->GameMode, 
+            &GameState->Leaderboard,
+            GameState->Score,
+            &GameState->ScoreSubmitted,
+            &Memory->PlatformCallbacks);
   }
   FlushCommandStack(&GameState->CommandStack, 
                     &Memory->PlatformCallbacks, 
