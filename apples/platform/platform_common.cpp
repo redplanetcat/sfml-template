@@ -4,6 +4,10 @@ PlatformHandleInput(game_input* Input) {
   while (GetPlatformState().Window.pollEvent(Event)) {
     if (Event.type == sf::Event::Closed) {
       GetPlatformState().Window.close();
+    } else if (Event.type == sf::Event::TextEntered) {
+      if (Event.text.unicode >= 32 && Event.text.unicode < 127) {
+        Input->Text = (char)Event.text.unicode;
+      }
     } else if (Event.type == sf::Event::KeyPressed) {
       Input->Keys[Event.key.code] = true;
     } else if (Event.type == sf::Event::KeyReleased) {

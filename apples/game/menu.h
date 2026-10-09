@@ -80,6 +80,9 @@ DrawMenu(gui::context* CTX, u8* GameMode, game_scene* Scene, hashmap* HighScores
 
     gui::PanelEnd(CTX); // PanelScores
 
+    local_persist char NameBuffer[64];
+    gui::InputText(CTX, NameBuffer, 64);
+
     if (gui::Button(CTX, "Start Game!")) {
       *Scene = game_scene::Game;
       *GameMode |= (1 << (u8)game_mode::MenuHidden);

@@ -132,6 +132,7 @@ struct game_input {
   vec2 MousePosition;
   vec2 MouseDelta;
   f32 MouseWheel;
+  char Text;
 
   inline b32
   IsKeyPressed(key Code) {
@@ -185,6 +186,7 @@ struct game_input {
   SwapStates() {
     memcpy(PrevKeys, Keys, sizeof(Keys));
     memcpy(PrevMouseButtons, MouseButtons, sizeof(MouseButtons));
+    Text = '\0';
   }
 };
 
