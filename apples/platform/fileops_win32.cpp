@@ -106,6 +106,7 @@ PLATFORM_READ_ENTIRE_FILE(PlatformReadEntireFile) {
 }
 
 PLATFORM_WRITE_TO_FILE(PlatformWriteToFile) {
+<<<<<<< HEAD
   char FullPath[PLATFORM_FILENAME_COUNT];
   Win32BuildExecutablePathFilename(&Win32State, FilePath,
                                    sizeof(FullPath), FullPath);
@@ -144,6 +145,9 @@ PLATFORM_WRITE_TO_FILE(PlatformWriteToFile) {
   }
 
   CloseHandle(FileHandle);
+=======
+
+>>>>>>> 5abd9ced41afe93c98670bf3100380ce78d68cb2
 }
 
 PLATFORM_LOAD_TEXTURE(PlatformLoadTexture) {
