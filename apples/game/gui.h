@@ -286,20 +286,25 @@ GuiDrawButton(context* CTX, element_id Id, container* Container) {
 }
 
 internal void
-GuiDrawInput(context* CTX, element_id Id, container* Container) {
+GuiDrawInputBox(context* CTX, element_id Id, u32 TextLen, container* Container) {
   draw_command Command = { };
   Command.DstRect = Container->Rect;
   Command.Z = Container->Z;
   b32 Focused = (CTX->Focus.Id == Id.Id);
   if (Focused) {
+    Command.DstRect.w = 1;
     Command.Color = Container->Style.ActiveColor;
     PushDrawCommand(CTX->CommandStack, &Command);
+    Command.DstRect.x += Container->Rect.w;
+    PushDrawCommand(CTX->CommandStack, &Command);
+    Command.DstRect.x = Container->Rect.x;
+    Command.DstRect.w = Container->Rect.w;
+    Command.DstRect.h = 1;
+    PushDrawCommand(CTX->CommandStack, &Command);
+    Command.DstRect.y += Container->Rect.h;
+    PushDrawCommand(CTX->CommandStack, &Command);
   }
-  Command.DstRect.x += 1;
-  Command.DstRect.y += 1;
-  Command.DstRect.w -= 2;
-  Command.DstRect.h -= 2;
-  Command.Z += 1;
+  Command.DstRect = Container->Rect;
   Command.Color = Container->Style.BaseColor;
   PushDrawCommand(CTX->CommandStack, &Command);
 }
@@ -412,9 +417,9 @@ Button(context* CTX, const char* Text) {
   Container.Style = CTX->Style;
   Container.Layout = layout::Horizontal;
   memcpy(Container.Margin, CTX->Style.ButtonMargin, sizeof(Container.Margin));
+  
   GuiPushContainer(CTX, &Container);
   Label(CTX, Text, TextLen);
-  GuiPopContainer(CTX);
 
   GuiUpdateElementInput(CTX, Id, &Container);
 
@@ -425,6 +430,8 @@ Button(context* CTX, const char* Text) {
   }
 
   GuiDrawButton(CTX, Id, &Container);
+  GuiPopContainer(CTX);
+
   return (Clicked);
 }
 
@@ -439,11 +446,11 @@ InputText(context* CTX, char* Buffer, u32 BufferSize) {
   u32 TextLen = (u32)strnlen(Buffer, BufferSize);
   
   vec2 TextSize = GetTextSize(Buffer, TextLen, &CTX->FontData);
-  f32 InputWidth = TextSize.x  + CTX->Style.ButtonMargin[(u32)margin::Left]
+  container* Parent = &CTX->Containers[CTX->NumContainers - 1];
+  f32 InputWidth = MAX(64, TextSize.x)  + CTX->Style.ButtonMargin[(u32)margin::Left]
                                 + CTX->Style.ButtonMargin[(u32)margin::Right];
   f32 InputHeight = TextSize.y + CTX->Style.ButtonMargin[(u32)margin::Top]
                                 + CTX->Style.ButtonMargin[(u32)margin::Bottom];
-  container* Parent = &CTX->Containers[CTX->NumContainers - 1];
   container Container = CreateChildContainer(CTX, 
                                              Parent,
                                              InputWidth,
@@ -452,9 +459,9 @@ InputText(context* CTX, char* Buffer, u32 BufferSize) {
   Container.Style = CTX->Style;
   Container.Layout = layout::Horizontal;
   memcpy(Container.Margin, CTX->Style.ButtonMargin, sizeof(Container.Margin));
+  
   GuiPushContainer(CTX, &Container);
   Label(CTX, Buffer, TextLen);
-  GuiPopContainer(CTX);
   
   GuiUpdateElementInput(CTX, Id, &Container);
   
@@ -463,22 +470,21 @@ InputText(context* CTX, char* Buffer, u32 BufferSize) {
     if (CTX->Text > (char)0) {
       Buffer[TextLen++] = CTX->Text;
       Buffer[TextLen++] = '\0';
-      printf("%c", CTX->Text);
     }
     // Handle backspace
     if ((CTX->KeyPressed == (i32)key::Backspace) && (TextLen > 0)) {
-      printf("Backspace\n");
       Buffer[--TextLen] = '\0';
     }
     // Handle return
     if (CTX->KeyPressed == (i32)key::Enter) {
       // Clear focus
-      printf("Enter\n");
       CTX->Focus = element_id{};
     }
   }
 
-  GuiDrawInput(CTX, Id, &Container);
+  GuiDrawInputBox(CTX, Id, TextLen, &Container);
+
+  GuiPopContainer(CTX);
 }
 
 } // namespace gui

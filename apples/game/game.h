@@ -32,6 +32,9 @@ typedef PLATFORM_GET_FILE_LENGTH(platform_get_file_length_t);
 #define PLATFORM_READ_ENTIRE_FILE(name) void name(char* Output, const char* FilePath, u32 Length)
 typedef PLATFORM_READ_ENTIRE_FILE(platform_read_entire_file_t);
 
+#define PLATFORM_WRITE_TO_FILE(name) void name(char* Input, const char* FilePath, u32 Length)
+typedef PLATFORM_WRITE_TO_FILE(platform_write_to_file_t);
+
 #define PLATFORM_LOAD_TEXTURE(name) texture_id name(const char* TexturePath)
 typedef PLATFORM_LOAD_TEXTURE(platform_load_texture_t);
 
@@ -82,6 +85,7 @@ struct platform_callbacks {
 
   platform_get_file_length_t* PlatformGetFileLength;
   platform_read_entire_file_t* PlatformReadEntireFile;
+  platform_write_to_file_t* PlatformWriteToFile;
 
   platform_load_texture_t* PlatformLoadTexture;
   platform_load_texture_from_memory_t* PlatformLoadTextureFromMemory;

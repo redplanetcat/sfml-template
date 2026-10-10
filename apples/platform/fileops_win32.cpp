@@ -105,6 +105,10 @@ PLATFORM_READ_ENTIRE_FILE(PlatformReadEntireFile) {
   return;
 }
 
+PLATFORM_WRITE_TO_FILE(PlatformWriteToFile) {
+
+}
+
 PLATFORM_LOAD_TEXTURE(PlatformLoadTexture) {
   texture_id TextureID = { };
   if (GetPlatformState().TexturesCount >= MAX_TEXTURES) {

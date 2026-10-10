@@ -120,6 +120,25 @@ PLATFORM_READ_ENTIRE_FILE(PlatformReadEntireFile) {
   close(InputFD);
 }
 
+PLATFORM_WRITE_TO_FILE(PlatformWriteToFile) {
+  char FullPath[PLATFORM_FILENAME_COUNT];
+  LinuxBuildExecutablePathFilename(&LinuxState, FilePath,
+                                   sizeof(FullPath), FullPath);
+  
+  i32 OutputFD = open(FullPath, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+  if (OutputFD < 0) return;
+
+  ssize_t BytesWritten = write(OutputFD, Input, Length - 1);
+
+  if (BytesWritten == -1) {
+    perror("Error writing to file");
+  } else {
+    printf("Successfully wrote %ld bytes.\n", (long)BytesWritten);
+  }
+
+  close(OutputFD);
+}
+
 PLATFORM_LOAD_TEXTURE(PlatformLoadTexture) {
   texture_id TextureID = { };
   if (GetPlatformState().TexturesCount >= MAX_TEXTURES) {
