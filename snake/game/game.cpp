@@ -12,8 +12,6 @@
 
 #define NUM_ENTITIES 2048
 
-namespace apples_game {
-
 struct game_state {
   gui::context GuiContext;
   entity_manager* Entities;
@@ -23,7 +21,7 @@ struct game_state {
   hashmap Leaderboard;
   texture_id AppleTextureHandle;
   texture_id RockTextureHandle;
-  texture_id SnakeTextureHandles[snake_sprite::Count];
+  texture_id SnakeTextureHandles[(i32)snake_sprite::Count];
   shader_id BackgroundShaderHandle;
   sound_id CrunchSoundHandle;
   sound_id DeathSoundHandle;
@@ -39,50 +37,8 @@ struct game_state {
   game_scene Scene;
 };
 
-struct player_settings {
-  f32 InitialSpeed = 200.f;
-  f32 SpeedDelta = 16.f;
-  vec2 Size = vec2{36.f, 36.f};
-  vec2 Collider = vec2{36.f, 36.f};
-  color Color = color{ 255, 255, 255, 255 };
-  vec2 StartPosition = vec2{ WINDOW_WIDTH/2.f, WINDOW_HEIGHT/2.f };
-  f32 RestartTime = 3.f;
-  i32 AppleScore = 100;
-};
-
-constexpr player_settings PlayerSettings = player_settings();
-
-internal void
-CreatePlayer(game_state* GameState) {
-  GameState->PlayerRef = GameState->Entities->Add(kind::Player);
-  entity& Player = GameState->Entities->Get(GameState->PlayerRef);
-  Player.Pos = PlayerSettings.StartPosition;
-  Player.Size = PlayerSettings.Size;
-  Player.Collider = PlayerSettings.Collider;
-  Player.Color = PlayerSettings.Color;
-  Player.Texture = GameState->PacmanTextureHandle;
-  Player.Flags |= (u32)entity_flags::Drawable;
-  Log("Created player handle: %i with texture handle: %u [%f:%f]", GameState->PlayerRef.Idx, Player.Texture.Handle, Player.Texture.Width, Player.Texture.Height);
-}
-
-internal vec2
-GetRandomPointAwayFromPlayer(game_state* GameState, f32 Radius) {
-  vec2 PlayerPosition = vec2{WINDOW_WIDTH/2.f, WINDOW_HEIGHT/2.f};
-  entity& Player = GameState->Entities->Get(GameState->PlayerRef);
-  if (Player) {
-    PlayerPosition = Player.Pos;
-  }
-  f32 RadiusSq = Radius * Radius;
-  vec2 RandomPosition = {0.f, 0.f};
-
-  do {
-    RandomPosition = vec2{
-      ((f32)rand() / (f32)RAND_MAX) * (WINDOW_WIDTH-64.f) + 32.f,
-      ((f32)rand() / (f32)RAND_MAX) * (WINDOW_HEIGHT-64.f) + 32.f
-    };
-  } while (PlayerPosition.DistanceToSq(RandomPosition) < RadiusSq);
-  return RandomPosition;
-}
+#include "resources.h"
+#include "player.h"
 
 internal void
 SpawnApple(game_state* GameState) {
@@ -104,15 +60,16 @@ SpawnApple(game_state* GameState) {
 
 internal void
 SpawnStartingApples(game_state* GameState) {
-  u32 MaxApplesToSpawn = (GameState->GameMode & (1 << (u32)game_mode::ManyApples))
-              ? PlayerSettings.NumStartingApplesB
-              : PlayerSettings.NumStartingApplesA;
-  u32 MinApplesToSpawn = MaxApplesToSpawn / 2;
-  u32 ApplesToSpawn = (u32)(((f32)rand() / (f32)RAND_MAX) *
-              ((f32)MaxApplesToSpawn-(f32)MinApplesToSpawn) + (f32)MinApplesToSpawn);
-  for (u32 I = 0; I <= ApplesToSpawn; I++) {
-    SpawnApple(GameState);
-  }
+  // TODO: spawn apples one by one instead
+  //u32 MaxApplesToSpawn = (GameState->GameMode & (1 << (u32)game_mode::ManyApples))
+  //            ? PlayerSettings.NumStartingApplesB
+  //            : PlayerSettings.NumStartingApplesA;
+  //u32 MinApplesToSpawn = MaxApplesToSpawn / 2;
+  //u32 ApplesToSpawn = (u32)(((f32)rand() / (f32)RAND_MAX) *
+  //            ((f32)MaxApplesToSpawn-(f32)MinApplesToSpawn) + (f32)MinApplesToSpawn);
+  //for (u32 I = 0; I <= ApplesToSpawn; I++) {
+  //  SpawnApple(GameState);
+  //}
 }
 
 internal void
@@ -157,6 +114,7 @@ GameReset(game_state* GameState, platform_callbacks* Callbacks) {
   srand((u32)time(NULL));
   SpawnStartingApples(GameState);
 }
+
 
 internal void
 GameInit(game_state* GameState, game_memory* Memory) {
@@ -214,26 +172,8 @@ GameInit(game_state* GameState, game_memory* Memory) {
                                   vec2{3.f, 3.f},
                                   rect_alignment::Center);
   }
-  if (GameState->AppleTextureHandle.Handle == 0) {
-    GameState->AppleTextureHandle = Callbacks->PlatformLoadTexture("Resources/Textures/Apple.png");
-    Log("Apple texture handle: %u", GameState->AppleTextureHandle.Handle);
-  }
-  if (GameState->RockTextureHandle.Handle == 0) {
-    GameState->RockTextureHandle = Callbacks->PlatformLoadTexture("Resources/Textures/Rock.png");
-    Log("Rock texture handle: %u", GameState->RockTextureHandle.Handle);
-  }
-  if (GameState->PacmanTextureHandle.Handle == 0) {
-    GameState->PacmanTextureHandle = Callbacks->PlatformLoadTexture("Resources/Textures/Pacman.png");
-    Log("Pacman texture handle: %u", GameState->PacmanTextureHandle.Handle);
-  }
-  if (GameState->CrunchSoundHandle.Handle == 0) {
-    GameState->CrunchSoundHandle = Callbacks->PlatformLoadSound("Resources/Sounds/Crunch.ogg");
-    Log("Crunch sound handle: %u", GameState->CrunchSoundHandle.Handle);
-  }
-  if (GameState->DeathSoundHandle.Handle == 0) {
-    GameState->DeathSoundHandle = Callbacks->PlatformLoadSound("Resources/Sounds/Death.ogg");
-    Log("Death sound handle: %u", GameState->DeathSoundHandle.Handle);
-  }
+
+  LoadResources(GameState, "Resources/Resources.txt", Callbacks);
 }
 
 internal void
@@ -526,10 +466,6 @@ UpdateWinScreen(game_state* GameState,
     GameState->GameMode &= (u8)(~(1 << (u8)game_mode::NeedsRestart));
   }
 }
-
-} // namespace apples_game
-
-using namespace apples_game;
 
 #if defined __cplusplus
 extern "C"

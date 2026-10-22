@@ -128,7 +128,6 @@ enum class game_scene: u8 {
   WinScreen,
 };
 
-
 #define GAME_UPDATE(name) void name(game_memory* Memory, \
                                     game_input* Input, \
                                     f32 Delta)
