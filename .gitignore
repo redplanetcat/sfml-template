@@ -1,8 +1,8 @@
-apples/build/
-apples/debug/
-apples/.vscode/
-apples/.vs/
-apples/ApplesGame/x64/
+**/build/
+**/debug/
+**/.vscode/
+**/.vs/
+**/ApplesGame/x64/
 imgui.ini
 /setup_env.sh
 *.exp
