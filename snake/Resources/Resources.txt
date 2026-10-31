@@ -1,0 +1,14 @@
+HeadUp: Resources\Textures\head_up.png
+HeadRight: Resources\Textures\head_right.png
+HeadDown: Resources\Textures\head_down.png
+HeadLeft: Resources\Textures\head_left.png
+BodyVertical: Resources\Textures\body_vertical.png
+BodyHorizontal: Resources\Textures\body_horizontal.png
+BodyBottomRight: Resources\Textures\body_bottomright.png
+BodyBottomLeft: Resources\Textures\body_bottomleft.png
+BodyTopRight: Resources\Textures\body_topright.png
+BodyTopLeft: Resources\Textures\body_topleft.png
+TailUp: Resources\Textures\tail_up.png
+TailRight: Resources\Textures\tail_right.png
+TailDown: Resources\Textures\tail_down.png
+TailLeft: Resources\Textures\tail_left.png

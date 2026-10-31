@@ -7,7 +7,6 @@
 #include <windows.h>
 #include "main_win32.h"
 #include "platform_common.h"
-#include "../common/strings.cpp"
 #include "fileops_win32.cpp"
 #include "platform_common.cpp"
 #include "memory_win32.cpp"

@@ -37,58 +37,15 @@ struct game_state {
   game_scene Scene;
 };
 
+internal void
+UpdateScore(game_state* GameState, platform_callbacks* Callbacks, u32 Score);
+
+internal void
+GameReset(game_state* GameState, platform_callbacks* Callbacks);
+
 #include "resources.h"
+#include "spawnables.h"
 #include "player.h"
-
-internal void
-SpawnApple(game_state* GameState) {
-  vec2 ApplePosition = GetRandomPointAwayFromPlayer(GameState, 64);
-  entity_ref AppleRef = GameState->Entities->Add(kind::Apple);
-  entity& Apple = GameState->Entities->Get(AppleRef);
-  Apple.Pos = ApplePosition;
-  Apple.Size = vec2{16.f, 16.f};
-  Apple.Collider = Apple.Size;
-  Apple.Color = color{255, 255, 255, 255};
-  Apple.Texture = GameState->AppleTextureHandle;
-  Apple.Timer = 0.5f;
-  Apple.TimerLength = 0.5f;
-  Apple.Flags |= (u32)entity_flags::Drawable;
-  Apple.Flags |= (u32)entity_flags::Pickup;
-  Apple.Flags |= (u32)entity_flags::SpawnAnimated;
-  Log("Created apple handle: %i with texture handle: %u [%f:%f]", AppleRef.Idx, Apple.Texture.Handle, Apple.Texture.Width, Apple.Texture.Height);
-}
-
-internal void
-SpawnStartingApples(game_state* GameState) {
-  // TODO: spawn apples one by one instead
-  //u32 MaxApplesToSpawn = (GameState->GameMode & (1 << (u32)game_mode::ManyApples))
-  //            ? PlayerSettings.NumStartingApplesB
-  //            : PlayerSettings.NumStartingApplesA;
-  //u32 MinApplesToSpawn = MaxApplesToSpawn / 2;
-  //u32 ApplesToSpawn = (u32)(((f32)rand() / (f32)RAND_MAX) *
-  //            ((f32)MaxApplesToSpawn-(f32)MinApplesToSpawn) + (f32)MinApplesToSpawn);
-  //for (u32 I = 0; I <= ApplesToSpawn; I++) {
-  //  SpawnApple(GameState);
-  //}
-}
-
-internal void
-SpawnStone(game_state* GameState) {
-  vec2 StonePosition = GetRandomPointAwayFromPlayer(GameState, 64);
-  entity_ref StoneRef = GameState->Entities->Add(kind::Stone);
-  Log("Created stone handle: %i", StoneRef.Idx);
-  entity& Stone = GameState->Entities->Get(StoneRef);
-  Stone.Pos = StonePosition;
-  Stone.Size = vec2{32.f, 32.f};
-  Stone.Collider = Stone.Size;
-  Stone.Color = color{100, 100, 100, 255};
-  Stone.Texture = GameState->RockTextureHandle;
-  Stone.Timer = 0.5f;
-  Stone.TimerLength = 0.5f;
-  Stone.Flags |= (u32)entity_flags::Drawable;
-  Stone.Flags |= (u32)entity_flags::Damager;
-  Stone.Flags |= (u32)entity_flags::SpawnAnimated;
-}
 
 internal void
 UpdateScore(game_state* GameState, platform_callbacks* Callbacks, u32 Score) {
@@ -199,111 +156,10 @@ DrawBackground(game_state* GameState, platform_callbacks* Callbacks) {
 
 
 internal void
-DrawText(game_state* GameState, platform_callbacks* Callbacks) {
+DrawScoreText(game_state* GameState, platform_callbacks* Callbacks) {
   Callbacks->PlatformDrawText(GameState->ScoreTextHandle);
   if (GameState->RestartTimer > 0.f) {
     Callbacks->PlatformDrawText(GameState->RestartTextHandle);
-  }
-}
-
-internal void
-OnPlayerDied(game_state* GameState, platform_callbacks* Callbacks) {
-  entity_manager& EM = *GameState->Entities;
-  entity& Player = EM.Get(GameState->PlayerRef);
-  if (Player) {
-    EM.Rem(GameState->PlayerRef);
-  }
-  GameState->RestartTimer = PlayerSettings.RestartTime;
-  Callbacks->PlatformPlaySound(GameState->DeathSoundHandle);
-}
-
-internal void
-UpdatePlayer(game_state* GameState, 
-             platform_callbacks* Callbacks, 
-             game_input* Input, 
-             f32 Delta) 
-{
-  entity& Player = GameState->Entities->Get(GameState->PlayerRef);
-  if (Player) {
-    if (Input->IsKeyDown(key::D)) {
-      Player.Dir = vec2{1.f, 0.f};
-      Player.Rot = 0.f;
-      Player.Flags &= ~(u32)entity_flags::Flip;
-    } else if (Input->IsKeyDown(key::A)) {
-      Player.Dir = vec2{-1.f, 0.f};
-      Player.Rot = 0.f;
-      Player.Flags |= (u32)entity_flags::Flip;
-    } else if (Input->IsKeyDown(key::S)) {
-      Player.Dir = vec2{0.f, 1.f};
-      Player.Rot = 90.f;
-      Player.Flags &= ~(u32)entity_flags::Flip;
-    } else if (Input->IsKeyDown(key::W)) {
-      Player.Dir = vec2{0.f, -1.f};
-      Player.Rot = 90.f;
-      Player.Flags |= (u32)entity_flags::Flip;
-    }
-    Player.Pos += Player.Dir * GameState->PlayerSpeed * Delta;
-
-    rect PlayerRect = rect{
-      Player.Pos.x - Player.Collider.x/2.f,
-      Player.Pos.y - Player.Collider.y/2.f,
-      Player.Collider.x,
-      Player.Collider.y
-    };
-    rect LevelRect = rect{
-      0, 0,
-      WINDOW_WIDTH,
-      WINDOW_HEIGHT
-    };
-    if (!LevelRect.Contains(PlayerRect)) {
-      Log("Out of bounds death!");
-      OnPlayerDied(GameState, Callbacks);
-    }
-  } else if (GameState->RestartTimer <= 0.f) {
-    GameReset(GameState, Callbacks);
-  }
-
-}
-
-internal u32
-CountApples(game_state* GameState) {
-  entity_manager& EM = *GameState->Entities;
-  u32 Count = 0;
-  for (auto EIter = EM.begin(); EIter != EM.end(); ++EIter) {
-    if (EIter->Kind == kind::Apple) {
-      Count += 1;
-    }
-  }
-  return Count;
-}
-
-internal void
-OnAppleCollect(entity_ref AppleRef, game_state* GameState, platform_callbacks* Callbacks) {
-  entity_manager& EM = *GameState->Entities;
-  EM.Rem(AppleRef);
-  UpdateScore(GameState, Callbacks, GameState->Score + PlayerSettings.AppleScore);
-  if (GameState->GameMode & (1 << (u32)game_mode::SpeedUpOnScore)) {
-    GameState->PlayerSpeed += PlayerSettings.SpeedDelta;
-  }
-  if (GameState->GameMode & (1 << (u32)game_mode::InfiniteApples)) {
-    SpawnApple(GameState);
-  }
-  if (GameState->Score % 1000 == 0) {
-    SpawnStone(GameState);
-  }
-  Callbacks->PlatformPlaySound(GameState->CrunchSoundHandle);
-  u32 ApplesCount = CountApples(GameState);
-  if (ApplesCount <= 0) {
-    GameState->Scene = game_scene::WinScreen;
-  }
-}
-
-internal void
-OnPlayerPickup(entity_ref PickupRef, game_state* GameState, platform_callbacks* Callbacks) {
-  entity_manager& EM = *GameState->Entities;
-  entity& EPickup = EM.Get(PickupRef);
-  if (EPickup.Kind == kind::Apple) {
-    OnAppleCollect(PickupRef, GameState, Callbacks);
   }
 }
 
@@ -529,7 +385,7 @@ GAME_RENDER(GameRender) {
   FlushCommandStack(&GameState->CommandStack, 
                     &Memory->PlatformCallbacks, 
                     &ScratchArena);
-  DrawText(GameState, &Memory->PlatformCallbacks);
+  DrawScoreText(GameState, &Memory->PlatformCallbacks);
 }
 
 #if defined __cplusplus

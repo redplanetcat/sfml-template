@@ -11,6 +11,7 @@
 arena PermArena;
 arena ScratchArena;
 
+#include "../common/strings.h"
 #include "../common/sort.h"
 #include "../common/hash.h"
 #include "../common/hashmap.h"

@@ -149,6 +149,7 @@ PLATFORM_WRITE_TO_FILE(PlatformWriteToFile) {
 PLATFORM_LOAD_TEXTURE(PlatformLoadTexture) {
   texture_id TextureID = { };
   if (GetPlatformState().TexturesCount >= MAX_TEXTURES) {
+    printf("Couldn't load texture %s: max textures is %u\n", TexturePath, MAX_TEXTURES);
     return TextureID;
   }
   texture_file& TextureFile = GetPlatformState().Textures[GetPlatformState().TexturesCount];
@@ -167,6 +168,7 @@ PLATFORM_LOAD_TEXTURE(PlatformLoadTexture) {
 PLATFORM_LOAD_SHADER(PlatformLoadShader) {
   shader_id ShaderID = { };
   if (GetPlatformState().ShadersCount >= MAX_SHADERS) {
+    printf("Couldn't load shader %s %s: max shaders is %u\n", VertPath, FragPath, MAX_SHADERS);
     return ShaderID;
   }
   shader_file& ShaderFile = GetPlatformState().Shaders[GetPlatformState().ShadersCount];
@@ -187,6 +189,7 @@ PLATFORM_LOAD_SHADER(PlatformLoadShader) {
 PLATFORM_LOAD_SOUND(PlatformLoadSound) {
   sound_id SoundID = { };
   if (GetPlatformState().SoundsCount >= MAX_SOUNDS) {
+    printf("Couldn't load sound %s: max sounds is %u\n", SoundPath, MAX_SOUNDS);
     return SoundID;
   }
   sound_file& SoundFile = GetPlatformState().Sounds[GetPlatformState().SoundsCount];

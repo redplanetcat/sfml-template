@@ -17,7 +17,7 @@ struct sound_file {
   char Filename[PLATFORM_FILENAME_COUNT];
 };
 
-#define MAX_TEXTURES 16
+#define MAX_TEXTURES 32
 #define MAX_SHADERS 16
 #define MAX_SOUNDS 16
 #define MAX_TEXTS 16

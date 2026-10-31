@@ -28,23 +28,106 @@ CreatePlayer(game_state* GameState) {
   Log("Created player handle: %i with texture handle: %u [%f:%f]", GameState->PlayerRef.Idx, Player.Texture.Handle, Player.Texture.Width, Player.Texture.Height);
 }
 
-internal vec2
-GetRandomPointAwayFromPlayer(game_state* GameState, f32 Radius) {
-  vec2 PlayerPosition = vec2{WINDOW_WIDTH/2.f, WINDOW_HEIGHT/2.f};
+
+internal void
+OnPlayerDied(game_state* GameState, platform_callbacks* Callbacks) {
+  entity_manager& EM = *GameState->Entities;
+  entity& Player = EM.Get(GameState->PlayerRef);
+  if (Player) {
+    EM.Rem(GameState->PlayerRef);
+  }
+  GameState->RestartTimer = PlayerSettings.RestartTime;
+  Callbacks->PlatformPlaySound(GameState->DeathSoundHandle);
+}
+
+internal void
+UpdatePlayer(game_state* GameState, 
+             platform_callbacks* Callbacks, 
+             game_input* Input, 
+             f32 Delta) 
+{
   entity& Player = GameState->Entities->Get(GameState->PlayerRef);
   if (Player) {
-    PlayerPosition = Player.Pos;
-  }
-  f32 RadiusSq = Radius * Radius;
-  vec2 RandomPosition = {0.f, 0.f};
+    if (Input->IsKeyDown(key::D)) {
+      Player.Dir = vec2{1.f, 0.f};
+      Player.Rot = 0.f;
+      Player.Flags &= ~(u32)entity_flags::Flip;
+    } else if (Input->IsKeyDown(key::A)) {
+      Player.Dir = vec2{-1.f, 0.f};
+      Player.Rot = 0.f;
+      Player.Flags |= (u32)entity_flags::Flip;
+    } else if (Input->IsKeyDown(key::S)) {
+      Player.Dir = vec2{0.f, 1.f};
+      Player.Rot = 90.f;
+      Player.Flags &= ~(u32)entity_flags::Flip;
+    } else if (Input->IsKeyDown(key::W)) {
+      Player.Dir = vec2{0.f, -1.f};
+      Player.Rot = 90.f;
+      Player.Flags |= (u32)entity_flags::Flip;
+    }
+    Player.Pos += Player.Dir * GameState->PlayerSpeed * Delta;
 
-  do {
-    RandomPosition = vec2{
-      ((f32)rand() / (f32)RAND_MAX) * (WINDOW_WIDTH-64.f) + 32.f,
-      ((f32)rand() / (f32)RAND_MAX) * (WINDOW_HEIGHT-64.f) + 32.f
+    rect PlayerRect = rect{
+      Player.Pos.x - Player.Collider.x/2.f,
+      Player.Pos.y - Player.Collider.y/2.f,
+      Player.Collider.x,
+      Player.Collider.y
     };
-  } while (PlayerPosition.DistanceToSq(RandomPosition) < RadiusSq);
-  return RandomPosition;
+    rect LevelRect = rect{
+      0, 0,
+      WINDOW_WIDTH,
+      WINDOW_HEIGHT
+    };
+    if (!LevelRect.Contains(PlayerRect)) {
+      Log("Out of bounds death!");
+      OnPlayerDied(GameState, Callbacks);
+    }
+  } else if (GameState->RestartTimer <= 0.f) {
+    GameReset(GameState, Callbacks);
+  }
+
+}
+
+internal u32
+CountApples(game_state* GameState) {
+  entity_manager& EM = *GameState->Entities;
+  u32 Count = 0;
+  for (auto EIter = EM.begin(); EIter != EM.end(); ++EIter) {
+    if (EIter->Kind == kind::Apple) {
+      Count += 1;
+    }
+  }
+  return Count;
+}
+
+internal void
+OnAppleCollect(entity_ref AppleRef, game_state* GameState, platform_callbacks* Callbacks) {
+  entity_manager& EM = *GameState->Entities;
+  EM.Rem(AppleRef);
+  UpdateScore(GameState, Callbacks, GameState->Score + PlayerSettings.AppleScore);
+  if (GameState->GameMode & (1 << (u32)game_mode::SpeedUpOnScore)) {
+    GameState->PlayerSpeed += PlayerSettings.SpeedDelta;
+  }
+  if (GameState->GameMode & (1 << (u32)game_mode::InfiniteApples)) {
+    SpawnApple(GameState);
+  }
+  if (GameState->Score % 1000 == 0) {
+    SpawnStone(GameState);
+  }
+  Callbacks->PlatformPlaySound(GameState->CrunchSoundHandle);
+  u32 ApplesCount = CountApples(GameState);
+  if (ApplesCount <= 0) {
+    GameState->Scene = game_scene::WinScreen;
+  }
+}
+
+internal void
+OnPlayerPickup(entity_ref PickupRef, game_state* GameState, platform_callbacks* Callbacks) {
+  entity_manager& EM = *GameState->Entities;
+  entity& EPickup = EM.Get(PickupRef);
+  if (EPickup.Kind == kind::Apple) {
+    OnAppleCollect(PickupRef, GameState, Callbacks);
+  }
 }
 
 #endif

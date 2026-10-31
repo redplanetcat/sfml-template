@@ -26,9 +26,10 @@ LoadResources(game_state* GameState, const char* FilePath, platform_callbacks* C
 
     char* Rest = LineCopy;
     strtok_r(LineCopy, ":", &Rest);
+    char* Path = TrimWhitespace(Rest);
 
     size_t NameLen = strnlen(LineCopy, 512);
-    size_t PathLen = strnlen(Rest, uintptr_t(LineCopy - Rest));
+    size_t PathLen = strnlen(Path, uintptr_t(LineCopy - Path));
 
     for (i32 I = 0; I < (i32)snake_sprite::Count; I++) {
       if (GameState->SnakeTextureHandles[I].Handle > 0) {
@@ -37,8 +38,8 @@ LoadResources(game_state* GameState, const char* FilePath, platform_callbacks* C
       }
       //compare name, load texture
       if (strncmp(LineCopy, SnakeString[I], NameLen) == 0) {
-        GameState->SnakeTextureHandles[I] = Callbacks->PlatformLoadTexture(Rest);
-        Log("Snake %s texture handle: %u", SnakeString[I], GameState->SnakeTextureHandles[I]);
+        GameState->SnakeTextureHandles[I] = Callbacks->PlatformLoadTexture(Path);
+        Log("Snake %s texture handle: %u", SnakeString[I], GameState->SnakeTextureHandles[I].Handle);
       }
     }
 

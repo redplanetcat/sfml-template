@@ -102,7 +102,7 @@ set DLL_LINK=%DLL_LINK%     /EXPORT:GameUpdate
 set DLL_LINK=%DLL_LINK%     /EXPORT:GameDestroy
 
 :: set SUBSYSTEM=windows,5.2
-set SUBSYSTEM=console
+set SUBSYSTEM=console :: For debugging
 
 if "%PLATFORM_SRC_CHANGED%" == "1" (
   cl %DEFINES% %FLAGS% %WARNING_LINK_FLAGS% /I"..\%SFML_INCLUDE%" -Fm:"main_win32.map" "..\%PLATFORM_SRC_DIR%\main_win32.cpp" %SFML_LINK% /link /pdb:"main_win32.pdb" /LIBPATH:"..\%SFML_LIB%" %WIN32_LINK% -subsystem:%SUBSYSTEM% /OUT:"%PLATFORM_OUT_NAME%"
