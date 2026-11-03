@@ -111,6 +111,7 @@ OnAppleCollect(entity_ref AppleRef, game_state* GameState, platform_callbacks* C
   if (GameState->GameMode & (1 << (u32)game_mode::InfiniteApples)) {
     SpawnApple(GameState);
   }
+  // TODO: add a segment to snake tail
   if (GameState->Score % 1000 == 0) {
     SpawnStone(GameState);
   }

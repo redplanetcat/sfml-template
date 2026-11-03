@@ -5,6 +5,7 @@
 enum class kind {
   Nil,
   Player,
+  Segment,
   Apple,
   Stone
 };
@@ -130,7 +131,7 @@ struct entity_manager {
 
     friend b32 
     operator==(const entity_iter& IterA, const entity_iter& IterB) {
-      return IterA.Ref.Idx == IterB.Ref.Idx;
+      return ((IterA.Ref.Idx == IterB.Ref.Idx) && (IterA.Ref.Gen == IterB.Ref.Gen));
     }
 
     friend b32 

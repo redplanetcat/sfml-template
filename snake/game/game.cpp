@@ -11,11 +11,13 @@
 #include <ctime>
 
 #define NUM_ENTITIES 2048
+#define MOVEMENT_BUFFER_LENGTH 128
 
 struct game_state {
   gui::context GuiContext;
   entity_manager* Entities;
   entity_ref PlayerRef;
+  vec2 MovementBuffer[MOVEMENT_BUFFER_LENGTH];
   draw_command _CommandBuffer[MAX_DRAW_COMMANDS];
   command_stack CommandStack;
   hashmap Leaderboard;
@@ -160,6 +162,28 @@ DrawScoreText(game_state* GameState, platform_callbacks* Callbacks) {
   Callbacks->PlatformDrawText(GameState->ScoreTextHandle);
   if (GameState->RestartTimer > 0.f) {
     Callbacks->PlatformDrawText(GameState->RestartTextHandle);
+  }
+}
+
+internal void
+UpdateSnakeSegments(game_state* GameState, platform_callbacks* Callbacks) {
+  entity_manager& EM = *GameState->Entities;
+  entity& Player = EM.Get(GameState->PlayerRef);
+  if (!Player) {
+    return;
+  }
+  rect PlayerRect = rect{
+    Player.Pos.x - Player.Collider.x/2.f,
+    Player.Pos.y - Player.Collider.y/2.f,
+    Player.Collider.x,
+    Player.Collider.y
+  };
+  // iterate over snake segments
+  entity_ref SegmentRef = Player.Next;
+  while (SegmentRef.Idx > 0) {
+    entity& Segment = EM.Get(SegmentRef);
+    // TODO: apply changes to segment position
+    SegmentRef = Segment.Next;
   }
 }
 
